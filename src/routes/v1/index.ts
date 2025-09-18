@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import usersRouter from '@/routes/users';
+import usersRouter from '@/routes/users/index';
 import adsSettingsRouter from '@/routes/ads-settings/route';
 import botStatusRouter from '@/routes/bot_status/route';
 import notificationsRouter from '@/routes/notifications/route';
