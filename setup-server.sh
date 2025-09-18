@@ -19,11 +19,17 @@ if [ -z "$domain" ]; then
     exit 1
 fi
 
-# Get email for SSL certificate
-read -p "Enter your email for SSL certificate: " email
-if [ -z "$email" ]; then
-    echo -e "${RED}Email is required for SSL certificate!${NC}"
-    exit 1
+# Ask if user wants SSL certificate
+read -p "Do you want to configure SSL certificate? (y/N): " ssl_choice
+ssl_choice=${ssl_choice:-n}  # Default to 'n' if empty
+
+email=""     
+if [[ "$ssl_choice" =~ ^[Yy]$ ]]; then
+    read -p "Enter your email for SSL certificate: " email
+    if [ -z "$email" ]; then
+        echo -e "${RED}Email is required for SSL certificate!${NC}"
+        exit 1
+    fi
 fi
 
 # Get server port
@@ -34,11 +40,18 @@ fi
 
 echo -e "${YELLOW}Setting up server with:${NC}"
 echo -e "${CYAN}Domain: $domain${NC}"
-echo -e "${CYAN}Email: $email${NC}"
+if [[ "$ssl_choice" =~ ^[Yy]$ ]]; then
+    echo -e "${CYAN}SSL: Enabled${NC}"
+    echo -e "${CYAN}Email: $email${NC}"
+else
+    echo -e "${CYAN}SSL: Disabled${NC}"
+fi
 echo -e "${CYAN}Port: $port${NC}"
 
 # Create Nginx configuration
-cat > "nginx-$domain.conf" << EOF
+if [[ "$ssl_choice" =~ ^[Yy]$ ]]; then
+    # SSL Configuration
+    cat > "nginx-$domain.conf" << EOF
 server {
     listen 80;
     server_name $domain;
@@ -111,6 +124,62 @@ server {
     }
 }
 EOF
+else
+    # HTTP Only Configuration
+    cat > "nginx-$domain.conf" << EOF
+server {
+    listen 80;
+    server_name $domain;
+
+    # Security Headers
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+
+    # Gzip Compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied expired no-cache no-store private must-revalidate auth;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+
+    # Rate Limiting
+    limit_req_zone \$binary_remote_addr zone=api:10m rate=10r/s;
+    limit_req zone=api burst=20 nodelay;
+
+    # Proxy to Node.js application
+    location / {
+        proxy_pass http://localhost:$port;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        
+        # Timeout settings
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Health check endpoint
+    location /health {
+        proxy_pass http://localhost:$port/health;
+        access_log off;
+    }
+
+    # Block access to sensitive files
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+}
+EOF
+fi
 
 echo -e "${GREEN}Nginx configuration created: nginx-$domain.conf${NC}"
 
@@ -184,8 +253,12 @@ sudo nginx -t
 sudo systemctl start nginx
 sudo systemctl enable nginx
 
-# Get SSL certificate
-sudo certbot --nginx -d $domain --email $email --agree-tos --non-interactive
+# Get SSL certificate (only if SSL is enabled)
+if [[ "$ssl_choice" =~ ^[Yy]$ ]]; then
+    sudo certbot --nginx -d $domain --email $email --agree-tos --non-interactive
+else
+    echo "Skipping SSL certificate setup (HTTP only mode)"
+fi
 
 # Start application with PM2
 pm2 start ecosystem.config.js
@@ -193,47 +266,19 @@ pm2 save
 pm2 startup
 
 echo "=== Deployment Complete ==="
-echo "Your API is now available at: https://$domain"
-echo "Health check: https://$domain/health"
+if [[ "$ssl_choice" =~ ^[Yy]$ ]]; then
+    echo "Your API is now available at: https://$domain"
+    echo "Health check: https://$domain/health"
+else
+    echo "Your API is now available at: http://$domain"
+    echo "Health check: http://$domain/health"
+fi
 EOF
 
 chmod +x deploy.sh
 
 echo -e "${GREEN}Deployment script created: deploy.sh${NC}"
-
-# Create environment template
-cat > ".env.example" << EOF
-# Database Configuration
-MONGODB_URI=mongodb://localhost:27017/earnfrom
-# or for MongoDB Atlas:
-# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/earnfrom
-
-# Server Configuration
-PORT=$port
-NODE_ENV=production
-
-# Security
-NEXT_PUBLIC_SECRET_KEY=your-secret-key-here-change-this
-JWT_SECRET=your-jwt-secret-here-change-this
-
-# Telegram Bot (if using)
-TELEGRAM_BOT_TOKEN=your-telegram-bot-token
-
-# YouTube API (if using)
-YOUTUBE_API_KEY=your-youtube-api-key
-
-# Email Configuration (optional)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-
-# Other API Keys
-# Add any other API keys your application needs
-EOF
-
-echo -e "${GREEN}Environment template created: .env.example${NC}"
-
+ 
 # Create Docker configuration (optional)
 cat > "Dockerfile" << EOF
 FROM node:18-alpine
@@ -385,7 +430,11 @@ echo -e "${YELLOW}Next steps:${NC}"
 echo -e "1. Copy .env.example to .env and configure your environment variables"
 echo -e "2. Run deployment: ${CYAN}./deploy.sh${NC}"
 echo -e "3. Monitor your application: ${CYAN}./monitor.sh${NC}"
-echo -e "4. Your API will be available at: ${CYAN}https://$domain${NC}"
+if [[ "$ssl_choice" =~ ^[Yy]$ ]]; then
+    echo -e "4. Your API will be available at: ${CYAN}https://$domain${NC}"
+else
+    echo -e "4. Your API will be available at: ${CYAN}http://$domain${NC}"
+fi
 
 echo ""
 echo -e "${YELLOW}Alternative Docker deployment:${NC}"
