@@ -20,7 +20,7 @@ router.post('/watch-ad', async (req: Request, res: Response) => {
     const { userId } = JSON.parse(result.data as string);
 
     // Find user
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId  : Number(userId)});
     if (!user) {
       return res.status(404).json({
         success: false, 
