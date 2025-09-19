@@ -16,7 +16,45 @@ sudo apt update
 sudo apt install nginx -y
 
 # -----------------------------
-# 2️⃣ Remove default site
+# 2️⃣ Install Node.js and npm
+# -----------------------------
+echo "Installing Node.js and npm..."
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# -----------------------------
+# 3️⃣ Setup environment and install dependencies
+# -----------------------------
+echo "Setting up environment file..."
+if [ ! -f .env ]; then
+    cp .env.example .env
+    echo "Created .env file from .env.example. Please update it with your configuration."
+fi
+
+echo "Installing Express application dependencies..."
+npm install
+
+# -----------------------------
+# 4️⃣ Build and start Express app
+# -----------------------------
+echo "Building Express application..."
+npm run build
+
+echo "Starting Express application on port $EXPRESS_PORT..."
+# Install PM2 for process management
+sudo npm install -g pm2
+
+# Start the Express app with PM2 in background
+pm2 start dist/server.js --name "earnfrom-api" --env production
+
+# Save PM2 configuration and setup startup script
+pm2 save
+pm2 startup
+
+echo "Express application is now running on port $EXPRESS_PORT"
+
+# -----------------------------
+# 5️⃣ Remove default site
 # -----------------------------
 echo "Removing default Nginx site..."
 sudo unlink /etc/nginx/sites-enabled/default 2>/dev/null
@@ -24,7 +62,7 @@ sudo rm -rf /etc/nginx/sites-available/default
 
  
 # -----------------------------
-# 5️⃣ Configure API subdomain
+# 6️⃣ Configure API subdomain
 # -----------------------------
 echo "Configuring Nginx for $API_DOMAIN..."
 sudo tee /etc/nginx/sites-available/$API_DOMAIN > /dev/null <<EOL
@@ -46,7 +84,7 @@ EOL
 sudo ln -s /etc/nginx/sites-available/$API_DOMAIN /etc/nginx/sites-enabled/
 
 # -----------------------------
-# 6️⃣ Test and reload Nginx
+# 7️⃣ Test and reload Nginx
 # -----------------------------
 echo "Testing Nginx configuration..."
 sudo nginx -t
