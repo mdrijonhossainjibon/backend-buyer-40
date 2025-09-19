@@ -18,7 +18,8 @@ router.post('/telegram-bonus', async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Invalid signature or request expired' });
     }
 
-    const { userId } = JSON.parse(result.data as string);
+    const userId = parseInt(result.data as string);
+
  
     // Find user
     const user = await User.findOne({ userId });
