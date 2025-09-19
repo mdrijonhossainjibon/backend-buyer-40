@@ -1,4 +1,9 @@
-import 'module-alias/register';
+// Register path mapping for development vs production
+if (process.env.NODE_ENV === 'production') {
+  require('module-alias/register');
+} else {
+  require('tsconfig-paths/register');
+}
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
