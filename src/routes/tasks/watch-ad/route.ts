@@ -12,20 +12,23 @@ router.post('/watch-ad', async (req: Request, res: Response) => {
 
     const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
 
+    
+
     const result = verifySignature({ timestamp, signature, hash }, secretKey);
     if (!result.success) {
       return res.status(401).json({ success: false, message: 'Invalid signature or request expired' });
     }
-
-    const { userId } = JSON.parse(result.data as string);
+    
+    const userId = parseInt(result.data as string);
 
     // Find user
-    const user = await User.findOne({ userId  : Number(userId)});
+    const user = await User.findOne({ userId  : userId});
     if (!user) {
       return res.status(404).json({
         success: false, 
         message: 'User not found'
       });
+
     }
 
     // Check if user is suspended
