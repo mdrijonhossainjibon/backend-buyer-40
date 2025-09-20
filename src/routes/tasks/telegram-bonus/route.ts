@@ -11,13 +11,13 @@ router.post('/telegram-bonus', async (req: Request, res: Response) => {
   try {
     const { timestamp, signature, hash } = req.body;
 
-    /* const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
+      const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
 
     const result = verifySignature({ timestamp, signature, hash }, secretKey);
     if (!result.success) {
       return res.status(401).json({ success: false, message: 'Invalid signature or request expired' });
-    } */
-    const result = { data : "709148502"}
+    }  
+  
     const userId = parseInt(result.data as string);
 
     
