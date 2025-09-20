@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import Withdrawal from 'models/Withdrawal';
 import User from 'models/User';
+import Notification from 'models/Notification';
 
 const router = Router();
 
@@ -69,6 +70,22 @@ router.post('/', async (req: Request, res: Response) => {
 
       // Update user's withdrawn amount
       user.withdrawnAmount += withdrawal.amount;
+
+      await Notification.create({
+        userId: user.userId,
+        type: 'withdrawal',
+        message: `Your withdrawal request of ${withdrawal.amount} has been approved by admin`,
+        status: 'unread',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        metadata: {
+          withdrawalId: withdrawal.withdrawalId,
+          amount: withdrawal.amount,
+          processedAt: withdrawal.processedAt,
+          adminNote: adminNote || null,
+          userNewWithdrawnAmount: user.withdrawnAmount
+        }
+      })
       
       await Promise.all([withdrawal.save(), user.save()]);
 
@@ -106,6 +123,21 @@ router.post('/', async (req: Request, res: Response) => {
       // Return the amount back to user's balance
       user.balanceTK += withdrawal.amount;
       
+      await Notification.create({
+        userId: user.userId,
+        type: 'withdrawal',
+        message: `Your withdrawal request of ${withdrawal.amount} has been rejected by admin`,
+        status: 'unread',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        metadata: {
+          withdrawalId: withdrawal.withdrawalId,
+          amount: withdrawal.amount,
+          processedAt: withdrawal.processedAt,
+          adminNote: adminNote || null,
+          userNewBalance: user.balanceTK
+        }
+      })
       await Promise.all([withdrawal.save(), user.save()]);
 
       return res.json({
