@@ -30,7 +30,7 @@ router.get('/', async (req: Request, res: Response) => {
     // Get total withdrawals (completed)
     const totalWithdrawalsResult = await Withdrawal.aggregate([
       {
-        $match: { status: 'completed' }
+        $match: { status: 'approved' }
       },
       {
         $group: {

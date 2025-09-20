@@ -35,20 +35,11 @@ export const getBotData = async (req: Request, res: Response) => {
       botConfig.botUsername = botInfo.data.username;
       await botConfig.save();
     }
-
+ 
     return res.status(200).json({
       success: true,
       data: {
-        config: {
-          _id: botConfig._id,
-          botToken: botConfig.botToken,
-          botUsername: botConfig.botUsername,
-          Status: botConfig.Status,
-          webhookUrl: botConfig.webhookUrl,
-          lastUpdated: botConfig.lastUpdated,
-          createdAt: botConfig.createdAt,
-          updatedAt: botConfig.updatedAt
-        } 
+        config:  botConfig
       }
     })
 
