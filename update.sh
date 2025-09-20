@@ -12,7 +12,7 @@ echo "🚀 Starting application update process..."
 # 1️⃣ Pull latest code from git
 # -----------------------------
 echo "📥 Pulling latest code from git..."
-git pull origin main
+git pull 
 
 if [ $? -ne 0 ]; then
     echo "❌ Git pull failed. Exiting..."
@@ -23,10 +23,10 @@ fi
 # 2️⃣ Install/update dependencies
 # -----------------------------
 echo "📦 Installing/updating dependencies..."
-npm install
+yarn install
 
 if [ $? -ne 0 ]; then
-    echo "❌ npm install failed. Exiting..."
+    echo "❌ yarn install failed. Exiting..."
     exit 1
 fi
 
@@ -34,7 +34,7 @@ fi
 # 3️⃣ Build the application
 # -----------------------------
 echo "🔨 Building application..."
-npm run build
+yarn  build
 
 if [ $? -ne 0 ]; then
     echo "❌ Build failed. Exiting..."
