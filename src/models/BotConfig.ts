@@ -1,63 +1,45 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IBotConfig extends Document {
-  botToken: string;
-  botUsername: string;
-  Status:  'online' | 'offline'
-  lastUpdated: Date;
-  createdAt: Date;
-  webhookUrl: string;
-  updatedAt: Date;
-  // Ad watch configuration
-  dailyAdLimit: number;
-  adEarningAmount: number;
-  adWatchEnabled: boolean;
+  botUsername: string
+  botToken: string
+  botStatus: 'online' | 'offline' | 'maintenance'
+  botLastSeen: Date
+  botVersion: string
+  createdAt: Date
+  updatedAt: Date
 }
 
 const BotConfigSchema: Schema = new Schema({
   botToken: {
     type: String,
     required: true,
-    unique: true
+    default: null
   },
   botUsername: {
     type: String,
-    required: true
+    unique: true,
+    
   },
-   Status: {
+  botStatus: {
     type: String,
     enum: ['online', 'offline'],
     required: true,
-    default: 'offline'
+    default: 'online'
   },
-  webhookUrl: {
-    type: String,
-    required: true
-  },
-  lastUpdated: {
+  botLastSeen: {
     type: Date,
+    required: true,
     default: Date.now
   },
-  // Ad watch configuration
-  dailyAdLimit: {
-    type: Number,
-    default: 10,
-    min: 1,
-    max: 100
-  },
-  adEarningAmount: {
-    type: Number,
-    default: 5,
-    min: 1,
-    max: 1000
-  },
-  adWatchEnabled: {
-    type: Boolean,
-    default: true
+  botVersion: {
+    type: String,
+    required: true,
+    default: 'v2.1.0'
   }
 }, {
   timestamps: true
-});
+})
 
  
 

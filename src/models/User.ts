@@ -72,6 +72,26 @@ const UserSchema = new Schema<IUser>({
     default: 0,
     min: [0, 'Referral count cannot be negative']
   },
+  dailyAdLimit: {
+    type: Number,
+    default: 10,
+    min: [1, 'Daily ad limit must be at least 1']
+  },
+  watchedToday: {
+    type: Number,
+    default: 0,
+    min: [0, 'Watched today cannot be negative']
+  },
+  totalEarned: {
+    type: Number,
+    default: 0,
+    min: [0, 'Total earned cannot be negative']
+  },
+  withdrawnAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Withdrawn amount cannot be negative']
+  },
  
   telegramBonus: {
     type: Number,
