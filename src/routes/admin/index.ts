@@ -8,6 +8,7 @@ import activitiesRouter from 'routes/admin/activities/route';
 import withdrawalsRouter from 'routes/admin/withdrawals/route';
 import usersRouter from 'routes/admin/users/route';
 import statsRouter from 'routes/admin/stats/route';
+import withdrawalActionRouter from 'routes/admin/withdrawal-action/route';
 const router = Router();
 
 // Bot routes
@@ -25,5 +26,10 @@ router.use('/withdrawals', withdrawalsRouter);
 
 // Users routes
 router.use('/users', usersRouter);
+
+// Stats routes
 router.use('/stats', statsRouter);
+
+// Withdrawal action routes
+router.use('/withdrawal-action', withdrawalActionRouter);
 export default router;
