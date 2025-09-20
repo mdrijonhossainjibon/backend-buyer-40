@@ -9,6 +9,7 @@ import withdrawalsRouter from 'routes/admin/withdrawals/route';
 import usersRouter from 'routes/admin/users/route';
 import statsRouter from 'routes/admin/stats/route';
 import withdrawalActionRouter from 'routes/admin/withdrawal-action/route';
+import adsSettingsRouter from 'routes/admin/ads/settings/route';
 const router = Router();
 
 // Bot routes
@@ -32,4 +33,8 @@ router.use('/stats', statsRouter);
 
 // Withdrawal action routes
 router.use('/withdrawal-action', withdrawalActionRouter);
+
+// Ads settings routes
+router.use('/ads/settings', adsSettingsRouter);
+
 export default router;
