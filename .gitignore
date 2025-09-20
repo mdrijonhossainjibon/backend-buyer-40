@@ -92,3 +92,6 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Custom scripts
+update.sh

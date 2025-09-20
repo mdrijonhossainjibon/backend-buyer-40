@@ -33,10 +33,7 @@ app.get('/health', (req: Request, res: Response) => {
     uptime: process.uptime()
   });
 });
-    
- 
-
-// Mount API routes
+     
 app.use('/api', apiRoutes);
 
     

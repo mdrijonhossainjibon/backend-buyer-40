@@ -10,11 +10,9 @@ import withdrawRouter from 'routes/withdraw/route';
 import adminRouter from 'routes/admin';
 import usersRouter from 'routes/users/route';
 const router = Router();
-
-// Mount users routes
+ 
 router.use('/v1', usersRouter);
-
-// Mount ads-settings routes
+ 
 router.use('/v1', adsSettingsRouter);
 
 // Mount bot-status routes
@@ -33,8 +31,6 @@ router.use('/v1', withdrawRouter);
 
 // Mount admin routes
 router.use('/v1/admin', adminRouter);
-
- 
  
 export default router;
  
