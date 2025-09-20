@@ -18,7 +18,6 @@ export const getBotConfig = async (req: Request, res: Response) => {
             botToken: '',
             botUsername: '',
             Status: 'offline',
-            webhookUrl: '',
             lastUpdated: new Date(),
             createdAt: new Date(),
             updatedAt: new Date()
@@ -35,8 +34,7 @@ export const getBotConfig = async (req: Request, res: Response) => {
           _id: botConfig._id,
           botToken: botConfig.botToken,
           botUsername: botConfig.botUsername,
-          Status: botConfig.Status,
-          webhookUrl: botConfig.webhookUrl,
+          Status: botConfig.botStatus,
           lastUpdated: botConfig.lastUpdated,
           createdAt: botConfig.createdAt,
           updatedAt: botConfig.updatedAt
@@ -55,7 +53,7 @@ export const getBotConfig = async (req: Request, res: Response) => {
 
 export const updateBotConfig = async (req: Request, res: Response) => {
   try {
-    const { botToken, webhookUrl, Status } = req.body
+    const { botToken,  Status } = req.body
 
     // Validation
     if (botToken && typeof botToken !== 'string') {
@@ -65,12 +63,7 @@ export const updateBotConfig = async (req: Request, res: Response) => {
       })
     }
 
-    if (webhookUrl && typeof webhookUrl !== 'string') {
-      return res.status(400).json({
-        success: false,
-        message: 'Webhook URL must be a string'
-      })
-    }
+ 
 
     if (Status && !['online', 'offline'].includes(Status)) {
       return res.status(400).json({
@@ -87,7 +80,7 @@ export const updateBotConfig = async (req: Request, res: Response) => {
 
 
     if (botToken !== undefined) updateData.botToken = botToken
-    if (webhookUrl !== undefined) updateData.webhookUrl = webhookUrl
+    
     if (Status !== undefined) updateData.Status = Status
 
     const info = await getBotInfo(botToken);
@@ -105,8 +98,7 @@ export const updateBotConfig = async (req: Request, res: Response) => {
           _id: botConfig._id,
           botToken: botConfig.botToken,
           botUsername: botConfig.botUsername,
-          Status: botConfig.Status,
-          webhookUrl: botConfig.webhookUrl,
+          Status: botConfig.botStatus,
           lastUpdated: botConfig.lastUpdated,
           createdAt: botConfig.createdAt,
           updatedAt: botConfig.updatedAt
