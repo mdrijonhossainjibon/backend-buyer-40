@@ -22,15 +22,8 @@ export const getBotData = async (req: Request, res: Response) => {
             lastUpdated: new Date(),
             createdAt: new Date(),
             updatedAt: new Date()
-          },
-          status: {
-            botUsername: '',
-            botStatus: 'offline',
-            botLastSeen: new Date(),
-            botVersion: 'v2.1.0',
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }
+          } 
+      
         },
         message: 'No bot configuration found, returning default data'
       })
@@ -55,16 +48,7 @@ export const getBotData = async (req: Request, res: Response) => {
           lastUpdated: botConfig.lastUpdated,
           createdAt: botConfig.createdAt,
           updatedAt: botConfig.updatedAt
-        },
-        status: {
-          _id: botConfig._id,
-          botUsername: botConfig.botUsername,
-          botStatus: botConfig.Status,
-          botLastSeen: botConfig.lastUpdated,
-          botVersion: 'v2.1.0',
-          createdAt: botConfig.createdAt,
-          updatedAt: botConfig.updatedAt
-        }
+        } 
       }
     })
 

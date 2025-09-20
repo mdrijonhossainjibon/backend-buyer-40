@@ -7,7 +7,7 @@ import botStopRouter from 'routes/admin/bots/stop/route';
 import activitiesRouter from 'routes/admin/activities/route';
 import withdrawalsRouter from 'routes/admin/withdrawals/route';
 import usersRouter from 'routes/admin/users/route';
-
+import statsRouter from 'routes/admin/stats/route';
 const router = Router();
 
 // Bot routes
@@ -25,5 +25,5 @@ router.use('/withdrawals', withdrawalsRouter);
 
 // Users routes
 router.use('/users', usersRouter);
-
+router.use('/stats', statsRouter);
 export default router;
