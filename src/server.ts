@@ -1,9 +1,4 @@
-// Register path mapping for development vs production
-if (process.env.NODE_ENV === 'production') {
-  require('module-alias/register');
-} else {
-  require('tsconfig-paths/register');
-}
+require('tsconfig-paths/register');
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -11,7 +6,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import connectDB from './config/database';
 import apiRoutes from './routes/v1';
-import '@/services/telegram';
+import 'services/telegram';
 // Load environment variables
 dotenv.config();
  

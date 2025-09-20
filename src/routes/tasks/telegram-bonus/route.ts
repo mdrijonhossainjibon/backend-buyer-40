@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express'
 import { verifySignature } from 'auth-fingerprint'
-import User from '@/models/User'
-import Activity from '@/models/Activity'
-import { BotConfig } from '@/models/BotConfig'
-import { checkTelegramChannelJoin } from '@/services/webhook'
+import User from 'models/User'
+import Activity from 'models/Activity'
+import { BotConfig } from 'models/BotConfig'
+import { checkTelegramChannelJoin } from 'services/webhook'
 
 const router = Router();
 

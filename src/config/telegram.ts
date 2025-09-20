@@ -1,5 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api';
-import { BotConfig } from '@/models/BotConfig';
+import { BotConfig } from 'models/BotConfig'
 // Message Templates
 export const MESSAGE_TEMPLATES = {
   WELCOME_NEW_USER: (firstName: string, balance: number, referralCode: string) => 

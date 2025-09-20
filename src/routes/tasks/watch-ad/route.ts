@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express'
 import { verifySignature } from 'auth-fingerprint'
-import User from '@/models/User'
-import Activity from '@/models/Activity'
-import AdsSettings from '@/models/AdsSettings'
+import User from 'models/User'
+import Activity from 'models/Activity'
+import AdsSettings from 'models/AdsSettings'
 
 const router = Router();
 

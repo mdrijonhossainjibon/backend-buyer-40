@@ -1,14 +1,14 @@
 import { Router } from 'express';
-import usersRouter from '@/routes/users';
-import adsSettingsRouter from '@/routes/ads-settings/route';
-import botStatusRouter from '@/routes/bot_status/route';
-import notificationsRouter from '@/routes/notifications/route';
-import telegramBonusRouter from '@/routes/tasks/telegram-bonus/route';
-import youtubeBonusRouter from '@/routes/tasks/youtube-bonus/route';
-import watchAdRouter from '@/routes/tasks/watch-ad/route';
-import withdrawRouter from '@/routes/withdraw/route';
-import adminRouter from '@/routes/admin';
- 
+
+import adsSettingsRouter from 'routes/ads-settings/route';
+import botStatusRouter from 'routes/bot_status/route';
+import notificationsRouter from 'routes/notifications/route';
+import telegramBonusRouter from 'routes/tasks/telegram-bonus/route';
+import youtubeBonusRouter from 'routes/tasks/youtube-bonus/route';
+import watchAdRouter from 'routes/tasks/watch-ad/route';
+import withdrawRouter from 'routes/withdraw/route';
+import adminRouter from 'routes/admin';
+import usersRouter from 'routes/users/route';
 const router = Router();
 
 // Mount users routes

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { verifySignature } from 'auth-fingerprint'
-import { BotConfig } from '@/models/BotConfig'
+import { BotConfig } from 'models/BotConfig'
 
 interface BotStatusRequest {
   userId: number

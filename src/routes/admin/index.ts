@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import botStatusRouter from '@/routes/admin/bots/status/route';
-import botConfigRouter from '@/routes/admin/bots/config/route';
-import botDataRouter from '@/routes/admin/bots/data/route';
-import botWebhookRouter from '@/routes/admin/bots/webhook/route';
-import botStopRouter from '@/routes/admin/bots/stop/route';
-import activitiesRouter from '@/routes/admin/activities/route';
-import withdrawalsRouter from '@/routes/admin/withdrawals/route';
-import usersRouter from '@/routes/admin/users/route';
+import botStatusRouter from 'routes/admin/bots/status/route';
+import botConfigRouter from 'routes/admin/bots/config/route';
+import botDataRouter from 'routes/admin/bots/data/route';
+import botWebhookRouter from 'routes/admin/bots/webhook/route';
+import botStopRouter from 'routes/admin/bots/stop/route';
+import activitiesRouter from 'routes/admin/activities/route';
+import withdrawalsRouter from 'routes/admin/withdrawals/route';
+import usersRouter from 'routes/admin/users/route';
 
 const router = Router();
 

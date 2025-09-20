@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { verifySignature } from 'auth-fingerprint'
-import Notification from '@/models/Notification'
-import User from '@/models/User'
+import Notification from 'models/Notification'
+import User from 'models/User'
 
  
 const router = Router();

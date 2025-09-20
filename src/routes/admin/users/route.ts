@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
-import User from '@/models/User'
-import Withdrawal from '@/models/Withdrawal';
-import { formatNumber } from '@/lib/formatNumber';
+import User from 'models/User'
+import Withdrawal from 'models/Withdrawal';
+import { formatNumber } from 'lib/formatNumber';
 
 const router = Router()
 

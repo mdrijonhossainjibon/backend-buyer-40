@@ -1,6 +1,6 @@
 import { Request, Response, Router } from 'express'
-import { BotConfig } from '@/models/BotConfig'
-import { getWebhookInfo, removeWebhook } from '@/services/webhook'
+import { BotConfig } from 'models/BotConfig'
+import { getWebhookInfo, removeWebhook } from 'services/webhook'
 
 const router = Router()
 
