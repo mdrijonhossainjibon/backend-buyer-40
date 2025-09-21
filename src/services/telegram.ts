@@ -133,7 +133,7 @@ export class TelegramBotService {
           reply_markup: {
             inline_keyboard: [
               [
-                { text: "🚀 ইনকাম শুরু করুন", web_app: { url: "http://earnfromadsbd.online" } }
+                { text: "🚀 ইনকাম শুরু করুন", web_app: { url: "https://earnfromadsbd.online" } }
               ],
               [
                 { text: "🎥 টিউটোরিয়াল ভিডিও", url: "https://www.youtube.com/@earnfromads-1" }
