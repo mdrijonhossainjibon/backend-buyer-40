@@ -22,6 +22,7 @@ router.post('/users', async (req: Request, res: Response) => {
 
     const { userId , start_param , username } = JSON.parse(result.data  as string)
    
+    console.log(JSON.parse(result.data  as string))
     // Find or create user
     let user = await User.findOne({ userId })
 
@@ -237,7 +238,6 @@ router.post('/users', async (req: Request, res: Response) => {
     return res.json(response);
     
   } catch (error : any) {
-    console.error('Error fetching users:', error);
     return res.status(500).json({ 
       success: false, 
       message: error.message 
