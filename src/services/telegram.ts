@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import User from '../models/User';
 import { MESSAGE_TEMPLATES, createTelegramBot, getBotConfig } from '../config/telegram';
-
+ 
 export class TelegramBotService {
   private bot: TelegramBot | null = null;
   private isInitialized = false;
@@ -14,6 +14,13 @@ export class TelegramBotService {
   private async initialize() {
     try {
       this.botConfig = await getBotConfig();
+      
+      // Check if bot is offline
+      if (this.botConfig.botStatus === 'offline') {
+        console.log('🚫 Telegram Bot is offline - not initializing');
+        return;
+      }
+      
       this.bot = await createTelegramBot(); // Use polling for development
       this.initializeBot();
     } catch (error) {
@@ -67,6 +74,19 @@ export class TelegramBotService {
   }
 
   /**
+   * Check if bot is offline and send appropriate message
+   */
+  private async checkBotStatus(chatId: number): Promise<boolean> {
+    if (this.botConfig?.botStatus === 'offline') {
+      await this.bot?.sendMessage(chatId, MESSAGE_TEMPLATES.BOT_OFFLINE(), {
+        parse_mode: 'Markdown'
+      });
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Handle /start command with optional referral code
    */
   private async handleStartCommand(msg: TelegramBot.Message, referralCode?: string): Promise<void> {
@@ -79,6 +99,11 @@ export class TelegramBotService {
       // Only handle private chats, not groups or channels
       if (msg.chat.type !== 'private') {
         console.log(`Ignoring message from ${msg.chat.type} chat: ${chatId}`);
+        return;
+      }
+
+      // Check if bot is offline
+      if (!(await this.checkBotStatus(chatId))) {
         return;
       }
 
@@ -131,6 +156,11 @@ export class TelegramBotService {
         return;
       }
 
+      // Check if bot is offline
+      if (!(await this.checkBotStatus(chatId))) {
+        return;
+      }
+
       if (!userId) {
         await this.bot?.sendMessage(chatId, MESSAGE_TEMPLATES.ERROR_MESSAGE());
         return;
@@ -174,6 +204,11 @@ export class TelegramBotService {
 
       // Only handle private chats
       if (msg.chat.type !== 'private') {
+        return;
+      }
+
+      // Check if bot is offline
+      if (!(await this.checkBotStatus(chatId))) {
         return;
       }
 
@@ -237,6 +272,11 @@ export class TelegramBotService {
         return;
       }
 
+      // Check if bot is offline
+      if (!(await this.checkBotStatus(chatId))) {
+        return;
+      }
+
       const referralBonus = this.botConfig?.referralBonus || 10;
       const message = MESSAGE_TEMPLATES.HELP_MESSAGE(referralBonus);
 
@@ -262,6 +302,11 @@ export class TelegramBotService {
       // Only handle private chats
       if (msg.chat.type !== 'private') {
         console.log(`Ignoring message from ${msg.chat.type} chat: ${chatId}`);
+        return;
+      }
+
+      // Check if bot is offline
+      if (!(await this.checkBotStatus(chatId))) {
         return;
       }
 
@@ -308,18 +353,7 @@ export class TelegramBotService {
     }
   }
 
-  /**
-   * Generate a unique referral code
-   */
-  private generateReferralCode(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  }
-
+ 
   /**
    * Handle callback queries from inline keyboards
    */
@@ -330,13 +364,18 @@ export class TelegramBotService {
 
       if (!chatId || !data) return;
 
+      // Check if bot is offline
+      if (!(await this.checkBotStatus(chatId))) {
+        return;
+      }
+
       // Answer the callback query to remove loading state
       await this.bot?.answerCallbackQuery(callbackQuery.id);
 
       if (data.startsWith('copy_reflink_')) {
         const referralCode = data.replace('copy_reflink_', '');
         const botUsername = this.botConfig?.botUsername || 'earnfrom_bot';
-        const referralLink = `https://t.me/${botUsername}?start=${referralCode}`;
+        const referralLink = `https://t.me/${botUsername}?startapp=${referralCode}`;
         
         await this.bot?.sendMessage(chatId, `🔗 Your referral link:\n\`${referralLink}\`\n\n📋 Tap to copy and share with friends!`, {
           parse_mode: 'Markdown'
@@ -401,6 +440,13 @@ export class TelegramBotService {
         console.error('Bot is not initialized');
         return false;
       }
+
+      // Check if bot is offline
+      if (this.botConfig?.botStatus === 'offline') {
+        console.log('Bot is offline - cannot send message');
+        return false;
+      }
+
       await this.bot.sendMessage(userId, message, options);
       return true;
     } catch (error) {
@@ -418,6 +464,13 @@ export class TelegramBotService {
         console.error('Bot is not initialized');
         return false;
       }
+
+      // Check if bot is offline
+      if (this.botConfig?.botStatus === 'offline') {
+        console.log('Bot is offline - cannot send welcome message');
+        return false;
+      }
+
       const message = MESSAGE_TEMPLATES.WELCOME_NEW_USER(firstName, balance, referralCode);
       await this.bot.sendMessage(userId, message, {
         parse_mode: 'Markdown',
@@ -426,6 +479,34 @@ export class TelegramBotService {
       return true;
     } catch (error) {
       console.error(`Failed to send welcome message to user ${userId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Send web app welcome message when user allows bot to message them
+   */
+  public async sendWebAppWelcome(userId: number, firstName: string): Promise<boolean> {
+    try {
+      if (!this.bot) {
+        console.error('Bot is not initialized');
+        return false;
+      }
+
+      // Check if bot is offline
+      if (this.botConfig?.botStatus === 'offline') {
+        console.log('Bot is offline - cannot send web app welcome message');
+        return false;
+      }
+
+      const message = MESSAGE_TEMPLATES.WEB_APP_WELCOME(firstName);
+      await this.bot.sendMessage(userId, message, {
+        parse_mode: 'Markdown',
+        reply_markup: this.getMainKeyboard()
+      });
+      return true;
+    } catch (error) {
+      console.error(`Failed to send web app welcome message to user ${userId}:`, error);
       return false;
     }
   }

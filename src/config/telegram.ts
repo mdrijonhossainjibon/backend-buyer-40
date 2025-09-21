@@ -76,7 +76,23 @@ export const MESSAGE_TEMPLATES = {
     `Welcome ${firstName}! Your account is ready.\n` +
     `🔗 Referral Code: \`${referralCode}\`\n` +
     `💰 Starting Balance: ${balance} TK\n\n` +
-    `Start earning now! 🚀`
+    `Start earning now! 🚀`,
+
+  BOT_OFFLINE: () =>
+    `🚫 *Bot is Currently Offline*\n\n` +
+    `Sorry, the bot is temporarily unavailable for maintenance.\n` +
+    `Please try again later.\n\n` +
+    `Thank you for your patience! 🙏`,
+
+  WEB_APP_WELCOME: (firstName: string) =>
+    `🎉 *Welcome to EarnFrom Bot!*\n\n` +
+    `Hi ${firstName}! Thank you for allowing me to message you through our web app.\n\n` +
+    `🚀 *What you can do now:*\n` +
+    `• Check your balance with /balance\n` +
+    `• Get your referral link with /reflink\n` +
+    `• Complete tasks and earn rewards\n` +
+    `• Invite friends and get bonuses\n\n` +
+    `Let's start earning together! 💰`
 };
 
 // Create Telegram Bot instance using BotConfig from database

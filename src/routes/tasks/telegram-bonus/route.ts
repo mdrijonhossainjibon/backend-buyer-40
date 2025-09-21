@@ -48,7 +48,7 @@ router.post('/telegram-bonus', async (req: Request, res: Response) => {
     }
 
     // Get bot configuration
-    const botConfig = await BotConfig.findOne({ Status: 'online' });
+    const botConfig = await BotConfig.findOne({ botStatus : 'online' });
     if (!botConfig) {
       return res.status(503).json({
         success: false, 
@@ -91,7 +91,7 @@ router.post('/telegram-bonus', async (req: Request, res: Response) => {
     await Activity.create({
       userId: user.userId,
       activityType: 'bonus',
-      description: `Claimed Telegram channel bonus and earned ${bonusAmount} TK`,
+      description: `Claimed Telegram channel bonus and earned ${bonusAmount} BDT`,
       amount: bonusAmount,
       status: 'completed',
       metadata: {
@@ -104,7 +104,7 @@ router.post('/telegram-bonus', async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      message: `Channel bonus claimed! You earned ${bonusAmount} TK!`,
+      message: `Channel bonus claimed! You earned ${bonusAmount} BDT!`,
       data: {
         earned: bonusAmount,
         newBalance: user.balanceTK,
