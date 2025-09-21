@@ -236,11 +236,11 @@ router.post('/users', async (req: Request, res: Response) => {
     
     return res.json(response);
     
-  } catch (error) {
+  } catch (error : any) {
     console.error('Error fetching users:', error);
     return res.status(500).json({ 
       success: false, 
-      message: 'Internal server error' 
+      message: error.message 
     });
   }
 });
