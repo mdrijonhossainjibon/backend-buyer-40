@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import User from '../models/User';
 import { MESSAGE_TEMPLATES, createTelegramBot, getBotConfig } from '../config/telegram';
- 
+
 export class TelegramBotService {
   private bot: TelegramBot | null = null;
   private isInitialized = false;
@@ -14,13 +14,13 @@ export class TelegramBotService {
   private async initialize() {
     try {
       this.botConfig = await getBotConfig();
-      
+
       // Check if bot is offline
       if (this.botConfig.botStatus === 'offline') {
         console.log('🚫 Telegram Bot is offline - not initializing');
         return;
       }
-      
+
       this.bot = await createTelegramBot(); // Use polling for development
       this.initializeBot();
     } catch (error) {
@@ -55,7 +55,7 @@ export class TelegramBotService {
     this.bot.on('message', async (msg) => {
       // Skip if it's a command (starts with /)
       if (msg.text?.startsWith('/')) return;
-      
+
       await this.handleDefaultMessage(msg);
     });
 
@@ -116,25 +116,40 @@ export class TelegramBotService {
       let user = await User.findOne({ userId });
 
       if (user) {
-        // Existing user - send welcome back message
-        const message = MESSAGE_TEMPLATES.WELCOME_BACK(
-          firstName,
-          user.balanceTK,
-          user.referralCode
-        );
-        
+
+        const fullName = `${msg.chat.first_name ?? ""} ${msg.chat.last_name ?? ""}`.trim();
+
+        const message = `
+✅ *স্বাগতম ${fullName}* ▪️ 🎖️
+
+নীচের *"ইনকাম শুরু করুন"* বাটনে চাপ দিয়ে Web Mini App খুলুন এবং আয় শুরু করুন।  
+👉 এখনই শুরু করতে নিচের বাটনে ক্লিক করুন।  
+
+📺 বোঝার সুবিধার জন্য টিউটোরিয়াল ভিডিওটি দেখে নিন।  
+`;
+
         await this.bot?.sendMessage(chatId, message, {
           parse_mode: 'Markdown',
-          reply_markup: this.getMainKeyboard()
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🚀 ইনকাম শুরু করুন", web_app: { url: "http://earnfromadsbd.online" } }
+              ],
+              [
+                { text: "🎥 টিউটোরিয়াল ভিডিও", url: "https://www.youtube.com/@earnfromads-1" }
+              ]
+            ]
+          }
         });
+
 
         // Update last login
         user.lastLogin = new Date();
         await user.save();
         return;
-      } 
+      }
 
-      this.handleDefaultMessage(msg);
+
     } catch (error) {
       console.error('Error in handleStartCommand:', error);
       if (msg.chat?.id && msg.chat.type === 'private') {
@@ -246,7 +261,7 @@ export class TelegramBotService {
             [
               {
                 text: '📱 Open Mini App',
-                web_app: { url :  'https://earnfromadsbd.online' }
+                web_app: { url: 'https://earnfromadsbd.online' }
               }
             ]
           ]
@@ -266,7 +281,7 @@ export class TelegramBotService {
   private async handleHelpCommand(msg: TelegramBot.Message): Promise<void> {
     try {
       const chatId = msg.chat.id;
-      
+
       // Only handle private chats
       if (msg.chat.type !== 'private') {
         return;
@@ -298,7 +313,8 @@ export class TelegramBotService {
   private async handleDefaultMessage(msg: TelegramBot.Message): Promise<void> {
     try {
       const chatId = msg.chat.id;
-      
+
+
       // Only handle private chats
       if (msg.chat.type !== 'private') {
         console.log(`Ignoring message from ${msg.chat.type} chat: ${chatId}`);
@@ -311,40 +327,60 @@ export class TelegramBotService {
       }
 
       // Handle keyboard button presses
-      if (msg.text) {
-        switch (msg.text) {
-          case '💰 Balance':
-            await this.handleBalanceCommand(msg);
-            return;
-          case '🔗 Referral Link':
-            await this.handleRefLinkCommand(msg);
-            return;
-          case '❓ Help':
-            await this.handleHelpCommand(msg);
-            return;
-          case '📱 Open Mini App':
-            const miniAppUrl = 'https://earnfromadsbd.online';
-            await this.bot?.sendMessage(chatId, `🚀 *Open Mini App*\n\n[Click here to open the EarnFrom Mini App](${miniAppUrl})`, {
-              parse_mode: 'Markdown',
-              reply_markup: {
-                inline_keyboard: [[
-                  {
-                    text: '📱 Open Mini App',
-                    web_app: { url :  'https://earnfromadsbd.online' }
-                  }
-                ]]
-              }
-            });
-            return;
-        }
-      }
+      /*  if (msg.text) {
+         switch (msg.text) {
+           case '💰 Balance':
+             await this.handleBalanceCommand(msg);
+             return;
+           case '🔗 Referral Link':
+             await this.handleRefLinkCommand(msg);
+             return;
+           case '❓ Help':
+             await this.handleHelpCommand(msg);
+             return;
+           case '📱 Open Mini App':
+             const miniAppUrl = 'https://earnfromadsbd.online';
+             await this.bot?.sendMessage(chatId, `🚀 *Open Mini App*\n\n[Click here to open the EarnFrom Mini App](${miniAppUrl})`, {
+               parse_mode: 'Markdown',
+               reply_markup: {
+                 inline_keyboard: [[
+                   {
+                     text: '📱 Open Mini App',
+                     web_app: { url :  'https://earnfromadsbd.online' }
+                   }
+                 ]]
+               }
+             });
+             return;
+         }
+       } */
 
-      // Default response for unrecognized messages
-      const message = MESSAGE_TEMPLATES.DEFAULT_RESPONSE();
+      const fullName = `${msg.chat.first_name ?? ""} ${msg.chat.last_name ?? ""}`.trim();
+
+      const message = `
+✅ *স্বাগতম ${fullName}* ▪️ 🎖️
+
+নীচের *"ইনকাম শুরু করুন"* বাটনে চাপ দিয়ে Web Mini App খুলুন এবং আয় শুরু করুন।  
+👉 এখনই শুরু করতে নিচের বাটনে ক্লিক করুন।  
+
+📺 বোঝার সুবিধার জন্য টিউটোরিয়াল ভিডিওটি দেখে নিন।  
+`;
+
       await this.bot?.sendMessage(chatId, message, {
         parse_mode: 'Markdown',
-        reply_markup: this.getMainKeyboard()
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "🚀 ইনকাম শুরু করুন", web_app: { url: "https://earnfromadsbd.online" } }
+            ],
+            [
+              { text: "🎥 টিউটোরিয়াল ভিডিও", url: "https://www.youtube.com/@earnfromads-1" }
+            ]
+          ]
+        }
       });
+
+
     } catch (error) {
       console.error('Error in handleDefaultMessage:', error);
       if (msg.chat?.id && msg.chat.type === 'private') {
@@ -353,7 +389,7 @@ export class TelegramBotService {
     }
   }
 
- 
+
   /**
    * Handle callback queries from inline keyboards
    */
@@ -376,7 +412,7 @@ export class TelegramBotService {
         const referralCode = data.replace('copy_reflink_', '');
         const botUsername = this.botConfig?.botUsername || 'earnfrom_bot';
         const referralLink = `https://t.me/${botUsername}?startapp=${referralCode}`;
-        
+
         await this.bot?.sendMessage(chatId, `🔗 Your referral link:\n\`${referralLink}\`\n\n📋 Tap to copy and share with friends!`, {
           parse_mode: 'Markdown'
         });
@@ -385,10 +421,10 @@ export class TelegramBotService {
       console.error('Error in handleCallbackQuery:', error);
     }
   }
- 
- 
 
- 
+
+
+
   /**
    * Get main keyboard markup
    */
@@ -424,7 +460,7 @@ export class TelegramBotService {
         [
           {
             text: '📱 Open Mini App',
-            web_app: { url :  'https://earnfromadsbd.online' }
+            web_app: { url: 'https://earnfromadsbd.online' }
           }
         ]
       ]
