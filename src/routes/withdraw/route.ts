@@ -8,7 +8,7 @@ const router = Router();
 
 router.post('/withdraw', async (req: Request, res: Response) => {
   try {
-    const { timestamp, signature, hash } = req.body;
+    const { timestamp, signature, hash , adminNote , withdrawalId } = req.body;
 
     const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
 
