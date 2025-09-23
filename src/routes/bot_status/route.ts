@@ -27,7 +27,8 @@ router.post('/bot_status', async (req: Request, res: Response) => {
     const { userId } = JSON.parse(result.data as string);
 
     // Find bot configuration record
-    const botConfig = await BotConfig.findOne({ })
+    const botConfig = await BotConfig.findOne({ });
+    console.log(botConfig);
 
     if (!botConfig) {
       return res.status(404).json({
