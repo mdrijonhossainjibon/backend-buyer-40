@@ -73,12 +73,10 @@ router.post('/', async (req: Request, res: Response) => {
 
       await Notification.create({
         userId: user.userId,
-        type: 'withdrawal',
-        message: `Your withdrawal request of ${withdrawal.amount} has been approved by admin`,
+        type: 'success',
+        message: `Your withdrawal request of ${withdrawal.amount} TK has been approved by admin`,
         title: 'Withdrawal Approved',
-        status: 'unread',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        priority: 'high',
         metadata: {
           withdrawalId: withdrawal.withdrawalId,
           amount: withdrawal.amount,
@@ -126,12 +124,10 @@ router.post('/', async (req: Request, res: Response) => {
       
       await Notification.create({
         userId: user.userId,
-        type: 'withdrawal',
-        message: `Your withdrawal request of ${withdrawal.amount} has been rejected by admin`,
+        type: 'warning',
+        message: `Your withdrawal request of ${withdrawal.amount} TK has been rejected by admin`,
         title: 'Withdrawal Rejected',
-        status: 'unread',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        priority: 'high',
         metadata: {
           withdrawalId: withdrawal.withdrawalId,
           amount: withdrawal.amount,
