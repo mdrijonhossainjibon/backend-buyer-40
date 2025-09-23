@@ -133,10 +133,10 @@ export class TelegramBotService {
           reply_markup: {
             inline_keyboard: [
               [
-                { text: "🚀 ইনকাম শুরু করুন", web_app: { url: "https://earnfromadsbd.online" } }
+                { text: "🚀 ইনকাম শুরু করুন", web_app: { url: "https://mdrijonhossainjibonyt.store" } }
               ],
               [
-                { text: "🎥 টিউটোরিয়াল ভিডিও", url: "https://www.youtube.com/@earnfromads-1" }
+                { text: "🎥 টিউটোরিয়াল ভিডিও", url: "https://youtu.be/WfZ2mvsOXAo?si=r5yRIqLyI9NbfQah" }
               ]
             ]
           }
@@ -261,7 +261,7 @@ export class TelegramBotService {
             [
               {
                 text: '📱 Open Mini App',
-                web_app: { url: 'https://earnfromadsbd.online' }
+                web_app: { url: 'https://mdrijonhossainjibonyt.store' }
               }
             ]
           ]
@@ -371,10 +371,10 @@ export class TelegramBotService {
         reply_markup: {
           inline_keyboard: [
             [
-              { text: "🚀 ইনকাম শুরু করুন", web_app: { url: "https://earnfromadsbd.online" } }
+              { text: "🚀 ইনকাম শুরু করুন", web_app: { url: "https://mdrijonhossainjibonyt.store" } }
             ],
             [
-              { text: "🎥 টিউটোরিয়াল ভিডিও", url: "https://www.youtube.com/@earnfromads-1" }
+              { text: "🎥 টিউটোরিয়াল ভিডিও", url: "https://youtu.be/WfZ2mvsOXAo?si=r5yRIqLyI9NbfQah" }
             ]
           ]
         }
@@ -460,7 +460,7 @@ export class TelegramBotService {
         [
           {
             text: '📱 Open Mini App',
-            web_app: { url: 'https://earnfromadsbd.online' }
+            web_app: { url: 'https://mdrijonhossainjibonyt.store' }
           }
         ]
       ]
