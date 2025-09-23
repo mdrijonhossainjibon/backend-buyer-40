@@ -80,7 +80,7 @@ router.post('/telegram-bonus', async (req: Request, res: Response) => {
     }
 
     // Telegram bonus amount
-    const bonusAmount = 15
+    const bonusAmount = 7
 
     // Update user stats
     user.telegramBonus = bonusAmount

@@ -59,7 +59,7 @@ router.post('/youtube-bonus', async (req: Request, res: Response) => {
     const subscriberCount = youtubeResult.subscriberCount || 0
 
     // YouTube bonus amount
-    const bonusAmount = 15
+    const bonusAmount = 7
 
     // Update user stats
     user.youtubeBonus = bonusAmount

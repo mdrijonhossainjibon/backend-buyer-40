@@ -42,7 +42,7 @@ router.post('/users', async (req: Request, res: Response) => {
            
            if (referrer) {
              // Update referrer's referral count and give bonus
-             referrerBonus = 20 // 25 TK bonus for referrer
+             referrerBonus = 5 // 25 TK bonus for referrer
              await User.findOneAndUpdate(
                { referralCode : start_param },
                { 
