@@ -182,16 +182,16 @@ router.post('/users', async (req: Request, res: Response) => {
 
 
         
-    // Get bot configuration for ad watch settings
+    // Get AdsSettings configuration for ad watch settings
     const AdsConfig = await AdsSettings.findOne().sort({ createdAt: -1 })
     if (!AdsConfig) {
       return res.status(500).json({
         success: false, 
-        message: 'Bot configuration not found'
+        message: 'AdsSettings configuration not found'
       })
     }
  
-    // Check daily ad limit using activities and bot config
+    // Check daily ad limit using activities and AdsSettings config
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
