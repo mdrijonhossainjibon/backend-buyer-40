@@ -13,36 +13,36 @@ const router = Router();
 router.get('/tasks', async (req: Request, res: Response) => {
   try {
     const { timestamp, signature, hash } = req.query;
- 
 
-   if (!timestamp || !signature || !hash) {
-    return res.status(400).json({
-      success: false,
-      message: 'Missing required parameters'
-    });
-   }
 
-    const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
-    const result = verifySignature({ timestamp, signature, hash }, secretKey);
-    
-    if (!result.success) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid signature or request expired' 
+    if (!timestamp || !signature || !hash) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required parameters'
       });
     }
 
-    const { userId }= JSON.parse(result.data as string);
+    const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
+    const result = verifySignature({ timestamp, signature, hash }, secretKey);
+
+    if (!result.success) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid signature or request expired'
+      });
+    }
+
+    const { userId } = JSON.parse(result.data as string);
 
     const tasks = await TaskModel.find();
-    
+
     // Check claimed status for each task
     const formattedTasks = await Promise.all(tasks.map(async (task) => {
-      const claimedTask = await ClaimedTask.findOne({ 
-        userId, 
-        taskId: task._id.toString() 
+      const claimedTask = await ClaimedTask.findOne({
+        userId,
+        taskId: task._id.toString()
       });
-      
+
       return {
         id: task._id.toString(),
         platform: task.platform,
@@ -50,7 +50,7 @@ router.get('/tasks', async (req: Request, res: Response) => {
         description: task.description,
         reward: task.reward,
         link: task.link,
-        claimed:  claimedTask?.status === 'verified',
+        claimed: claimedTask?.status === 'verified',
       };
     }));
 
@@ -69,7 +69,7 @@ router.get('/tasks', async (req: Request, res: Response) => {
   }
 });
 
- 
+
 
 // POST /api/v1/tasks - claim a task
 router.post('/tasks', async (req: Request, res: Response) => {
@@ -78,16 +78,16 @@ router.post('/tasks', async (req: Request, res: Response) => {
 
     const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
     const result = verifySignature({ timestamp, signature, hash }, secretKey);
-    
+
     if (!result.success) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid signature or request expired' 
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid signature or request expired'
       });
     }
 
     const { userId, taskId } = JSON.parse(result.data as string);
-    
+
     // Find the task
     const task = await TaskModel.findById(taskId);
     if (!task) {
@@ -109,7 +109,7 @@ router.post('/tasks', async (req: Request, res: Response) => {
     // Check if task already claimed
     const existingClaim = await ClaimedTask.findOne({ userId, taskId });
 
-     if (existingClaim && existingClaim.status === 'verified') {
+    if (existingClaim && existingClaim.status === 'verified') {
       return res.status(400).json({
         success: false,
         message: 'Task already claimed',
@@ -124,27 +124,27 @@ router.post('/tasks', async (req: Request, res: Response) => {
     if (task.platform.toLowerCase() === 'telegram') {
       const channelId = extractTelegramId(task.link);
 
-     
+
       const membershipCheck = await checkTelegramMembership(userId, channelId);
-      
+
       if (!membershipCheck.isMember) {
         // Create pending claim
-       if (!existingClaim) {
-           const pendingClaim = new ClaimedTask({
-          userId,
-          taskId: task._id.toString(),
-          platform: task.platform,
-          status: 'rejected',
-          reward: task.reward,
-          metadata: {
-            telegramUserId: userId,
-            channelId,
-            verificationAttempts: 1,
-            error: membershipCheck.error || 'Not a member'
-          }
-        });
-        await pendingClaim.save();
-       }
+        if (!existingClaim) {
+          const pendingClaim = new ClaimedTask({
+            userId,
+            taskId: task._id.toString(),
+            platform: task.platform,
+            status: 'rejected',
+            reward: task.reward,
+            metadata: {
+              telegramUserId: userId,
+              channelId,
+              verificationAttempts: 1,
+              error: membershipCheck.error || 'Not a member'
+            }
+          });
+          await pendingClaim.save();
+        }
 
         // Send notification to user with inline keyboard
         await sendTelegramNotification(
@@ -196,15 +196,17 @@ router.post('/tasks', async (req: Request, res: Response) => {
         });
       }
 
-      existingClaim.status = 'verified';
-      existingClaim.claimedAt = new Date();
-      existingClaim.completedAt = new Date();
-      existingClaim.metadata = {
-        telegramUserId: userId,
-        channelId,
-        membershipStatus: membershipCheck.status
-      };
-      await existingClaim.save();
+      if (existingClaim) {
+        existingClaim.status = 'verified';
+        existingClaim.claimedAt = new Date();
+        existingClaim.completedAt = new Date();
+        existingClaim.metadata = {
+          telegramUserId: userId,
+          channelId,
+          membershipStatus: membershipCheck.status
+        };
+        await existingClaim.save();
+      }
 
       // Add reward to user balance
       const rewardAmount = parseFloat(task.reward);
@@ -287,6 +289,8 @@ router.post('/tasks', async (req: Request, res: Response) => {
       }
     });
 
+
+
     return res.status(201).json({
       success: true,
       message: 'Task claimed successfully, pending verification',
@@ -305,5 +309,5 @@ router.post('/tasks', async (req: Request, res: Response) => {
   }
 });
 
- 
+
 export default router;
