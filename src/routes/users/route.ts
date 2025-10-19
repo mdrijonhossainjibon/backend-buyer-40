@@ -32,7 +32,7 @@ router.post('/users', async (req: Request, res: Response) => {
        const now = new Date()
        const currentHour = now.getHours()
        const isFeastTime = (currentHour >= 18 && currentHour <= 23) || (currentHour >= 6 && currentHour <= 10)
-       const feastBonus = isFeastTime ? 20 : 25 
+       const feastBonus = isFeastTime ? 0.015 : 0.02
      
      
        // Handle referral logic if start_param is provided
@@ -44,7 +44,7 @@ router.post('/users', async (req: Request, res: Response) => {
            
            if (referrer) {
              // Update referrer's referral count and give bonus
-             referrerBonus = 5 // 25 TK bonus for referrer
+             referrerBonus = 0.015//  
              await User.findOneAndUpdate(
                { referralCode : start_param },
                { 
@@ -60,7 +60,7 @@ router.post('/users', async (req: Request, res: Response) => {
              await Notification.create({
                userId: referrer.userId,
                title: '🎁 Referral Bonus!',
-               message: `Congratulations! A new user has joined through your referral. You have received ${referrerBonus} TK bonus!`,
+               message: `Congratulations! A new user has joined through your referral. You have received ${referrerBonus} USDT bonus!`,
                type: 'success',
                priority: 'high',
                isRead: false,
@@ -104,7 +104,7 @@ router.post('/users', async (req: Request, res: Response) => {
        await Notification.create({
          userId,
          title: '🎉 Welcome to EarnFromAds!',
-         message: `Welcome to our platform! You have received ${feastBonus} TK as registration bonus. Start watching ads to earn more!`,
+         message: `Welcome to our platform! You have received ${feastBonus} USDT as registration bonus. Start watching ads to earn more!`,
          type: 'info',
          priority: 'high',
          isRead: false,
@@ -120,7 +120,7 @@ router.post('/users', async (req: Request, res: Response) => {
          await Notification.create({
            userId,
            title: '🎊 Party time bonus!',
-           message: `You are lucky! You registered during feast time (6-10 AM or 6-11 PM) and received an extra ${feastBonus} TK bonus!`,
+           message: `You are lucky! You registered during feast time (6-10 AM or 6-11 PM) and received an extra ${feastBonus} USDT bonus!`,
            type: 'info',
            priority: 'high',
            isRead: false,
@@ -136,7 +136,7 @@ router.post('/users', async (req: Request, res: Response) => {
        await Activity.create({
          userId,
          activityType: 'signup',
-         description: `User registered and received ${feastBonus} TK bonus${isFeastTime ? ' (feast time)' : ''}${start_param ? ' (referral)' : ''}`,
+         description: `User registered and received ${feastBonus} USDT bonus${isFeastTime ? ' (feast time)' : ''}${start_param ? ' (referral)' : ''}`,
          amount: feastBonus,
          status: 'completed',
          metadata: {
