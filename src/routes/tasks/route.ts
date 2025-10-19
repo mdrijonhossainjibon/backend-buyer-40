@@ -109,10 +109,11 @@ router.post('/tasks', async (req: Request, res: Response) => {
     // Check if task already claimed
     const existingClaim = await ClaimedTask.findOne({ userId, taskId });
 
-    if (existingClaim && existingClaim.status === 'verified') {
+    // If already claimed with verified or pending status, return error
+    if (existingClaim && (existingClaim.status === 'verified' || existingClaim.status === 'pending')) {
       return res.status(400).json({
         success: false,
-        message: 'Task already claimed',
+        message: 'You have already claimed this task',
         data: {
           status: existingClaim.status,
           claimedAt: existingClaim.claimedAt
@@ -124,11 +125,10 @@ router.post('/tasks', async (req: Request, res: Response) => {
     if (task.platform.toLowerCase() === 'telegram') {
       const channelId = extractTelegramId(task.link);
 
-
       const membershipCheck = await checkTelegramMembership(userId, channelId);
 
       if (!membershipCheck.isMember) {
-        // Create pending claim
+        // Only create rejected claim if no existing claim
         if (!existingClaim) {
           const pendingClaim = new ClaimedTask({
             userId,
@@ -196,16 +196,35 @@ router.post('/tasks', async (req: Request, res: Response) => {
         });
       }
 
-      if (existingClaim) {
-        existingClaim.status = 'verified';
-        existingClaim.claimedAt = new Date();
-        existingClaim.completedAt = new Date();
-        existingClaim.metadata = {
-          telegramUserId: userId,
-          channelId,
-          membershipStatus: membershipCheck.status
-        };
-        await existingClaim.save();
+      // Create new claim or update rejected claim to verified
+      if (!existingClaim || existingClaim.status === 'rejected') {
+        if (existingClaim) {
+          // Update rejected claim to verified
+          existingClaim.status = 'verified';
+          existingClaim.claimedAt = new Date();
+          existingClaim.completedAt = new Date();
+          existingClaim.metadata = {
+            telegramUserId: userId,
+            channelId,
+            membershipStatus: membershipCheck.status
+          };
+          await existingClaim.save();
+        } else {
+          // Create new verified claim
+          const claim = new ClaimedTask({
+            userId,
+            taskId: task._id.toString(),
+            platform: task.platform,
+            status: 'verified',
+            reward: task.reward,
+            metadata: {
+              telegramUserId: userId,
+              channelId,
+              membershipStatus: membershipCheck.status
+            }
+          });
+          await claim.save();
+        }
       }
 
       // Add reward to user balance
