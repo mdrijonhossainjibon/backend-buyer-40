@@ -109,7 +109,7 @@ router.post('/tasks', async (req: Request, res: Response) => {
     // Check if task already claimed
     const existingClaim = await ClaimedTask.findOne({ userId, taskId });
 
-    if (existingClaim.status === 'verified') {
+     if (existingClaim && existingClaim.status === 'verified') {
       return res.status(400).json({
         success: false,
         message: 'Task already claimed',
