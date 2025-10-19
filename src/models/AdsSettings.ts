@@ -26,9 +26,9 @@ const AdsSettingsSchema = new Schema<IAdsSettings>({
   },
   defaultAdsReward: {
     type: Number,
-    default: 50,
-    min: 1,
-    max: 1000,
+    default: 0.01,
+    min: 0.0001,
+    max: 100000,
     required: true
   },
   adsWatchLimit: {
@@ -41,15 +41,15 @@ const AdsSettingsSchema = new Schema<IAdsSettings>({
   adsRewardMultiplier: {
     type: Number,
     default: 1.0,
-    min: 0.1,
-    max: 10.0,
+    min: 1,
+    max: 100.0,
     required: true
   },
   minWatchTime: {
     type: Number,
     default: 30,
-    min: 5,
-    max: 300,
+    min: 1,
+    max: 500,
     required: true
   },
   monetagEnabled: {
