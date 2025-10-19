@@ -13,6 +13,7 @@ const router = Router();
 router.get('/tasks', async (req: Request, res: Response) => {
   try {
     const { timestamp, signature, hash } = req.query;
+ 
 
    if (!timestamp || !signature || !hash) {
     return res.status(400).json({
@@ -68,41 +69,7 @@ router.get('/tasks', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/v1/tasks/:id - Get task details by ID
-router.get('/tasks/:id', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    const task = await TaskModel.findById(id);
-    
-    if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: 'Task not found'
-      });
-    }
-
-    return res.json({
-      success: true,
-      message: 'Task retrieved successfully',
-      data: {
-        id: task._id.toString(),
-        platform: task.platform,
-        title: task.title,
-        description: task.description,
-        reward: task.reward,
-        link: task.link
-      }
-    });
-
-  } catch (error) {
-    console.error('Get task by ID error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
+ 
 
 // POST /api/v1/tasks - claim a task
 router.post('/tasks', async (req: Request, res: Response) => {
@@ -141,6 +108,7 @@ router.post('/tasks', async (req: Request, res: Response) => {
 
     // Check if task already claimed
     const existingClaim = await ClaimedTask.findOne({ userId, taskId });
+
     if (existingClaim.status === 'verified') {
       return res.status(400).json({
         success: false,
@@ -161,7 +129,7 @@ router.post('/tasks', async (req: Request, res: Response) => {
       
       if (!membershipCheck.isMember) {
         // Create pending claim
-       if (existingClaim.status !== 'rejected') {
+       if (!existingClaim) {
            const pendingClaim = new ClaimedTask({
           userId,
           taskId: task._id.toString(),
