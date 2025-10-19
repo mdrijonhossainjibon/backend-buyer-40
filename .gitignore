@@ -93,5 +93,6 @@ temp/
 ehthumbs.db
 Thumbs.db
 
-
+# Custom scripts
+update.sh
 yarn.lock
