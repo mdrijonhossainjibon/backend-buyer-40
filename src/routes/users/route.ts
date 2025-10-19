@@ -20,9 +20,10 @@ router.post('/users', async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Invalid signature or request expired' });
     }
 
-    const { userId , start_param , username } = JSON.parse(result.data  as string)
+    const {  telegramId , username ,telegramUsername  , profilePicUrl , start_param } = JSON.parse(result.data  as string);
+    
    
-    let user = await User.findOne({ userId })
+    let user = await User.findOne({ userId :  telegramId })
 
 
 
@@ -66,7 +67,7 @@ router.post('/users', async (req: Request, res: Response) => {
                isRead: false,
                metadata: {
                  bonusAmount: referrerBonus,
-                 referredUserId: userId,
+                 referredUserId: telegramId,
                  bonusType: 'referral'
                }
              })
@@ -75,11 +76,11 @@ router.post('/users', async (req: Request, res: Response) => {
              await Activity.create({
                userId:  referrer.userId,
                activityType: 'referral',
-               description: `Referral bonus: New user (${userId}) joined`,
+               description: `Referral bonus: New user (${telegramId}) joined`,
                amount: referrerBonus,
                status: 'completed',
                metadata: {
-                 referredUserId: userId,
+                 referredUserId: telegramId,
                  bonusType: 'referral'
                }
              })
@@ -91,7 +92,7 @@ router.post('/users', async (req: Request, res: Response) => {
  
        // Create new user with default values and feast bonus
        user = await User.create({
-         userId,
+         userId : telegramId,
          balanceTK: feastBonus,
          referralCount: 0,
          telegramBonus: 0,
@@ -102,7 +103,7 @@ router.post('/users', async (req: Request, res: Response) => {
  
        // Create welcome notification
        await Notification.create({
-         userId,
+         userId : telegramId,
          title: '🎉 Welcome to EarnFromAds!',
          message: `Welcome to our platform! You have received ${feastBonus} USDT as registration bonus. Start watching ads to earn more!`,
          type: 'info',
@@ -118,7 +119,7 @@ router.post('/users', async (req: Request, res: Response) => {
        // Create feast time bonus notification if applicable
        if (isFeastTime) {
          await Notification.create({
-           userId,
+           userId : telegramId,
            title: '🎊 Party time bonus!',
            message: `You are lucky! You registered during feast time (6-10 AM or 6-11 PM) and received an extra ${feastBonus} USDT bonus!`,
            type: 'info',
@@ -134,7 +135,7 @@ router.post('/users', async (req: Request, res: Response) => {
  
        // Log user registration activity with bonus
        await Activity.create({
-         userId,
+         userId : telegramId,
          activityType: 'signup',
          description: `User registered and received ${feastBonus} USDT bonus${isFeastTime ? ' (feast time)' : ''}${start_param ? ' (referral)' : ''}`,
          amount: feastBonus,
@@ -151,7 +152,7 @@ router.post('/users', async (req: Request, res: Response) => {
  
        // Log login activity
        await Activity.create({
-         userId,
+         userId : telegramId,
          activityType: 'login',
          description: 'First login after registration',
          amount: 0,
@@ -169,7 +170,7 @@ router.post('/users', async (req: Request, res: Response) => {
  
        // Log login activity
        await Activity.create({
-         userId,
+         userId : telegramId,
          activityType: 'login',
          description: 'User login',
          amount: 0,
