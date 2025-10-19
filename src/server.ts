@@ -6,7 +6,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import connectDB from './config/database';
 import apiRoutes from './routes/v1';
-//import 'services/telegram';
+import 'services/telegram';
 // Load environment variables
 dotenv.config();
  

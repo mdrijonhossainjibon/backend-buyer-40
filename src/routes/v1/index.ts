@@ -6,6 +6,7 @@ import notificationsRouter from 'routes/notifications/route';
 import telegramBonusRouter from 'routes/tasks/telegram-bonus/route';
 import youtubeBonusRouter from 'routes/tasks/youtube-bonus/route';
 import watchAdRouter from 'routes/tasks/watch-ad/route';
+import tasksRouter from 'routes/tasks/route';
 import withdrawRouter from 'routes/withdraw/route';
 import adminRouter from 'routes/admin';
 import usersRouter from 'routes/users/route';
@@ -25,6 +26,7 @@ router.use('/v1', notificationsRouter);
 router.use('/v1', telegramBonusRouter);
 router.use('/v1', youtubeBonusRouter);
 router.use('/v1', watchAdRouter);
+router.use('/v1', tasksRouter);
 
 // Mount withdraw routes
 router.use('/v1', withdrawRouter);
