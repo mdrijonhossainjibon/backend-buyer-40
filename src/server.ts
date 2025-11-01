@@ -1,12 +1,18 @@
 require('tsconfig-paths/register');
 import express, { Application, Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import connectDB from './config/database';
 import apiRoutes from './routes/v1';
+import { initializeSocketIO } from './config/socket';
+import { initializeSocket } from './services/socket';
+import { initializeRedis } from './config/redis';
+import { socketAuthMiddleware } from './middlewares/socketAuth';
 import 'services/telegram';
+
 // Load environment variables
 dotenv.config();
  
@@ -16,6 +22,30 @@ connectDB();
 // Create Express application
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
+
+// Create HTTP server
+const httpServer = createServer(app);
+
+// Initialize Redis
+initializeRedis()
+  .then(() => {
+    console.log('✅ Redis initialized successfully');
+  })
+  .catch((error) => {
+    console.error('⚠️ Redis initialization failed. Running without Redis support:', error.message);
+  });
+
+// Initialize Socket.IO
+const io = initializeSocketIO(httpServer);
+
+// Apply Socket.IO authentication middleware
+io.use(socketAuthMiddleware);
+
+// Initialize socket event handlers
+initializeSocket(io);
+
+// Export io instance for use in routes
+export { io };
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -56,10 +86,11 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
   console.log(`📍 API endpoint: http://localhost:${PORT}/api`);
+  console.log(`🔌 WebSocket endpoint: ws://localhost:${PORT}/ws/withdraw`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 

@@ -4,7 +4,7 @@ import User from 'models/User'
 import Activity from 'models/Activity'
 import Notification from 'models/Notification'
 import AdsSettings from 'models/AdsSettings';
-
+import Wallet from 'models/Wallet';
 
 const router = Router();
 
@@ -44,17 +44,29 @@ router.post('/users', async (req: Request, res: Response) => {
            const referrer = await User.findOne({ referralCode : start_param})
            
            if (referrer) {
-             // Update referrer's referral count and give bonus
+             // Update referrer's referral count
              referrerBonus = 0.015//  
              await User.findOneAndUpdate(
                { referralCode : start_param },
                { 
                  $inc: { 
                    referralCount: 1,
-                   balanceTK: referrerBonus,
                    totalEarned: referrerBonus
                  }
                }
+             )
+
+             // Update referrer's wallet balance
+             await Wallet.findOneAndUpdate(
+               { userId: referrer.userId },
+               {
+                 $inc: {
+                   'balances.usdt': referrerBonus,
+                   'totalEarned.usdt': referrerBonus
+                 },
+                 lastTransaction: new Date()
+               },
+               { upsert: true }
              )
  
              // Create referral notification for referrer
@@ -90,15 +102,39 @@ router.post('/users', async (req: Request, res: Response) => {
          }
        }
  
-       // Create new user with default values and feast bonus
+       // Create new user with default values
        user = await User.create({
          userId : telegramId,
-         balanceTK: feastBonus,
          referralCount: 0,
          telegramBonus: 0,
          youtubeBonus: 0,
          totalEarned: feastBonus,
          username
+       })
+
+       // Create wallet for new user with feast bonus
+       await Wallet.create({
+         userId: telegramId,
+         balances: {
+           xp: 0,
+           usdt: feastBonus,
+           spin: 0
+         },
+         locked: {
+           xp: 0,
+           usdt: 0,
+           spin: 0
+         },
+         totalEarned: {
+           xp: 0,
+           usdt: feastBonus,
+           spin: 0
+         },
+         totalSpent: {
+           xp: 0,
+           usdt: 0,
+           spin: 0
+         }
        })
  
        // Create welcome notification
@@ -211,17 +247,16 @@ router.post('/users', async (req: Request, res: Response) => {
     })
  
 
+    // Get user's wallet
+    const wallet = await Wallet.findOne({ userId: user.userId });
+    
     const response  = {
       success: true,
       data: {
         userId: user.userId,
-        balanceTK: user.balanceTK,
         referralCount: user.referralCount,
         dailyAdLimit: AdsConfig.adsWatchLimit,
         watchedToday: todayAdWatchCount,
-        telegramBonus: user.telegramBonus,
-        youtubeBonus: user.youtubeBonus,
-        
         username: user.username,
         status: user.status,
         profile: {
@@ -230,8 +265,18 @@ router.post('/users', async (req: Request, res: Response) => {
           avatar: user.profile?.avatar
         },
         totalEarned: user.totalEarned,
-        availableBalance: user.balanceTK,
         referralCode: user.referralCode,
+        wallet: wallet ? {
+          balances: wallet.balances,
+          locked: wallet.locked,
+          available: {
+            xp: wallet.balances.xp - wallet.locked.xp,
+            usdt: wallet.balances.usdt - wallet.locked.usdt,
+            spin: wallet.balances.spin - wallet.locked.spin
+          },
+          totalEarned: wallet.totalEarned,
+          totalSpent: wallet.totalSpent
+        } : null
       },
       message: 'User data retrieved successfully'
     }
