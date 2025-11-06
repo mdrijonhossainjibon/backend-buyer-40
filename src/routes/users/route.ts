@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import { verifySignature } from 'auth-fingerprint';
 import User from 'models/User'
 import Activity from 'models/Activity'
-import Notification from 'models/Notification'
 import AdsSettings from 'models/AdsSettings';
 import Wallet from 'models/Wallet';
 
@@ -29,11 +28,8 @@ router.post('/users', async (req: Request, res: Response) => {
 
     
      if (!user) {
-       // Check if it's feast time (special hours for bonus)
-       const now = new Date()
-       const currentHour = now.getHours()
-       const isFeastTime = (currentHour >= 18 && currentHour <= 23) || (currentHour >= 6 && currentHour <= 10)
-       const feastBonus = isFeastTime ? 0.015 : 0.02
+       // Set fixed signup bonus
+       const signupBonus = 0.02
      
      
        // Handle referral logic if start_param is provided
@@ -69,21 +65,7 @@ router.post('/users', async (req: Request, res: Response) => {
                { upsert: true }
              )
  
-             // Create referral notification for referrer
-             await Notification.create({
-               userId: referrer.userId,
-               title: '🎁 Referral Bonus!',
-               message: `Congratulations! A new user has joined through your referral. You have received ${referrerBonus} USDT bonus!`,
-               type: 'success',
-               priority: 'high',
-               isRead: false,
-               metadata: {
-                 bonusAmount: referrerBonus,
-                 referredUserId: telegramId,
-                 bonusType: 'referral'
-               }
-             })
- 
+          
              // Log referral activity for referrer
              await Activity.create({
                userId:  referrer.userId,
@@ -106,18 +88,16 @@ router.post('/users', async (req: Request, res: Response) => {
        user = await User.create({
          userId : telegramId,
          referralCount: 0,
-         telegramBonus: 0,
-         youtubeBonus: 0,
-         totalEarned: feastBonus,
+         totalEarned: signupBonus,
          username
        })
 
-       // Create wallet for new user with feast bonus
+       // Create wallet for new user with signup bonus
        await Wallet.create({
          userId: telegramId,
          balances: {
            xp: 0,
-           usdt: feastBonus,
+           usdt: signupBonus,
            spin: 0
          },
          locked: {
@@ -127,7 +107,7 @@ router.post('/users', async (req: Request, res: Response) => {
          },
          totalEarned: {
            xp: 0,
-           usdt: feastBonus,
+           usdt: signupBonus,
            spin: 0
          },
          totalSpent: {
@@ -137,49 +117,18 @@ router.post('/users', async (req: Request, res: Response) => {
          }
        })
  
-       // Create welcome notification
-       await Notification.create({
-         userId : telegramId,
-         title: '🎉 Welcome to EarnFromAds!',
-         message: `Welcome to our platform! You have received ${feastBonus} USDT as registration bonus. Start watching ads to earn more!`,
-         type: 'info',
-         priority: 'high',
-         isRead: false,
-         metadata: {
-           bonusAmount: feastBonus,
-           registrationTime: now.toISOString(),
-           isFeastTime
-         }
-       })
- 
-       // Create feast time bonus notification if applicable
-       if (isFeastTime) {
-         await Notification.create({
-           userId : telegramId,
-           title: '🎊 Party time bonus!',
-           message: `You are lucky! You registered during feast time (6-10 AM or 6-11 PM) and received an extra ${feastBonus} USDT bonus!`,
-           type: 'info',
-           priority: 'high',
-           isRead: false,
-           metadata: {
-             bonusType: 'feast_time',
-             extraBonus: 10,
-             feastTimeHours: '6-10 AM & 6-11 PM'
-           }
-         })
-       }
+    
  
        // Log user registration activity with bonus
        await Activity.create({
          userId : telegramId,
          activityType: 'signup',
-         description: `User registered and received ${feastBonus} USDT bonus${isFeastTime ? ' (feast time)' : ''}${start_param ? ' (referral)' : ''}`,
-         amount: feastBonus,
+         description: `User registered and received ${signupBonus} USDT bonus${start_param ? ' (referral)' : ''}`,
+         amount: signupBonus,
          status: 'completed',
          metadata: {
            isFirstLogin: true,
-           isFeastTime,
-           bonusAmount: feastBonus,
+           bonusAmount: signupBonus,
            referredBy: start_param || null,
            userAgent: req.get('user-agent'),
            ipAddress: req.get('x-forwarded-for') || req.get('x-real-ip')

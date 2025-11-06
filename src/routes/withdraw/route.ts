@@ -3,16 +3,17 @@ import { verifySignature } from 'auth-fingerprint'
 import User from 'models/User'
 import Withdrawal from 'models/Withdrawal';
 import Wallet from 'models/Wallet';
-import { telegramBotService } from '../../services/telegram'
+import CryptoCoin from 'models/CryptoCoin';
+ 
  
 import { withdrawalController } from 'services/socket'
 
 const router = Router();
 
-router.post('/withdraw', async (req: Request, res: Response) => {
+router.post('/withdraw/submit', async (req: Request, res: Response) => {
    
   try {
-    const { timestamp, signature, hash , data } = req.body;
+    const { timestamp, signature, hash } = req.body;
 
     if(timestamp === undefined || signature === undefined || hash === undefined){
       return res.status(400).json({
@@ -21,14 +22,15 @@ router.post('/withdraw', async (req: Request, res: Response) => {
       });
     }
 
-    const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
+    const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || 'app';
 
-   /*  const result = verifySignature({ timestamp, signature, hash }, secretKey);
-    if (!result.success) {
+    const { success , data }= verifySignature({ timestamp, signature, hash }, secretKey);
+    if (!success) {
       return res.status(401).json({ success: false, message: 'Invalid signature or request expired' });
-    } */
+    }  
  
-    const { userId, coinSymbol, network, walletAddress, amount } = JSON.parse(data as string);
+    const { telegramId , coinSymbol, network, walletAddress, amount } = JSON.parse(data as string);
+ 
 
     // Validate crypto-specific fields
     if (!coinSymbol || !network || !walletAddress) {
@@ -38,21 +40,32 @@ router.post('/withdraw', async (req: Request, res: Response) => {
       });
     }
 
-    // Supported cryptocurrencies
-    const supportedCoins = ['USDT', 'BTC', 'ETH', 'BNB', 'TRX'];
-    if (!supportedCoins.includes(coinSymbol.toUpperCase())) {
+    // Validate cryptocurrency using CryptoCoin model
+    const cryptoCoin = await CryptoCoin.findOne({ 
+      symbol: coinSymbol.toUpperCase(),
+      isActive: true 
+    });
+
+    if (!cryptoCoin) {
       return res.status(400).json({
         success: false,
-        message: `Unsupported cryptocurrency. Supported: ${supportedCoins.join(', ')}`
+        message: `Unsupported or inactive cryptocurrency: ${coinSymbol}`
       });
     }
 
-    // Supported networks
-    const supportedNetworks = ['TRC20', 'ERC20', 'BEP20', 'Bitcoin', 'Ethereum', 'BSC', 'Tron'];
-    if (!supportedNetworks.includes(network)) {
+    // Validate network for the selected coin
+    const selectedNetwork = cryptoCoin.networks.find(
+      (net) => net.name === network && net.isActive
+    );
+
+    if (!selectedNetwork) {
+      const availableNetworks = cryptoCoin.networks
+        .filter(net => net.isActive)
+        .map(net => net.name)
+        .join(', ');
       return res.status(400).json({
         success: false,
-        message: `Unsupported network. Supported: ${supportedNetworks.join(', ')}`
+        message: `Unsupported network for ${coinSymbol}. Available: ${availableNetworks}`
       });
     }
 
@@ -65,7 +78,7 @@ router.post('/withdraw', async (req: Request, res: Response) => {
     }
 
     // Find user
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId : telegramId });
     if (!user) {
       return res.status(404).json({
         success: false, 
@@ -82,7 +95,7 @@ router.post('/withdraw', async (req: Request, res: Response) => {
     }
 
     // Get user wallet
-    const wallet = await Wallet.findOne({ userId });
+    const wallet = await Wallet.findOne({ userId : telegramId });
     if (!wallet) {
       return res.status(404).json({
         success: false,
@@ -124,14 +137,13 @@ router.post('/withdraw', async (req: Request, res: Response) => {
       });
     }
 
-    // Calculate fees (you can adjust this logic as needed)
-    const feePercentage = 0 // 0% fee for now
-    const fees = Math.round(amount * feePercentage / 100)
+    // Calculate fees from network configuration
+    const fees = parseFloat(selectedNetwork.fee)
     const netAmount = amount - fees
 
     // Lock the withdrawal amount in wallet
     await Wallet.findOneAndUpdate(
-      { userId },
+      { userId : telegramId},
       {
         $inc: {
           'locked.usdt': amount
@@ -142,85 +154,47 @@ router.post('/withdraw', async (req: Request, res: Response) => {
 
     // Create withdrawal record
     const withdrawal = await Withdrawal.create({
-      userId,
+      userId : telegramId,
       amount,
-      method: 'Crypto' as any,
-      accountDetails: {
-        accountNumber: walletAddress,
-        accountName: `${coinSymbol} (${network})`
-      },
-      fees,
-      netAmount,
+      currency: coinSymbol.toUpperCase(),
+      network,
+      address: walletAddress,
       status: 'pending',
-      metadata: {
-        coinSymbol: coinSymbol.toUpperCase(),
-        network,
-        walletAddress,
-        withdrawalType: 'cryptocurrency',
-        ipAddress: req.get('x-forwarded-for') || req.get('x-real-ip'),
-        userAgent: req.get('user-agent')
-      }
+      fee: fees
     })
  
      
     withdrawalController.processWithdrawal(
       withdrawal.withdrawalId,
-      userId,
+       telegramId,
       amount,
       coinSymbol,
       network,
       walletAddress
     );
 
- 
-
-    // Send Telegram notification to user
-    try {
-      const maskedAddress = `${walletAddress.substring(0, 10)}...${walletAddress.substring(walletAddress.length - 6)}`;
-      const telegramMessage = `💰 *Crypto Withdrawal Request Submitted*\n\n` +
-        `✅ Your withdrawal request has been successfully submitted!\n\n` +
-        `📋 *Details:*\n` +
-        `• Amount: *${amount} USDT*\n` +
-        `• Cryptocurrency: *${coinSymbol}*\n` +
-        `• Network: *${network}*\n` +
-        `• Wallet: \`${maskedAddress}\`\n` +
-        `• Withdrawal ID: \`${withdrawal.withdrawalId}\`\n` +
-        `• Fees: *${fees} USDT*\n` +
-        `• Net Amount: *${netAmount} USDT*\n` +
-        `• Status: *Pending*\n\n` +
-        `⏳ Your withdrawal will be processed soon.\n` +
-        `💵 Remaining Balance: *${(user.balanceTK - amount).toFixed(2)} USDT*`;
-
-      await telegramBotService.sendMessageToUser(
-        parseInt(userId),
-        telegramMessage,
-        { parse_mode: 'Markdown' }
-      );
-    } catch (telegramError) {
-      console.error('Failed to send Telegram notification:', telegramError);
-      // Don't fail the withdrawal if Telegram notification fails
-    }
-
+  
     // Get updated wallet balance
-    const updatedWallet = await Wallet.findOne({ userId });
+    const updatedWallet = await Wallet.findOne({ userId  : telegramId});
     const remainingBalance = updatedWallet ? updatedWallet.balances.usdt : 0;
     const availableAfter = updatedWallet ? (updatedWallet.balances.usdt - updatedWallet.locked.usdt) : 0;
 
     return res.json({
       success: true,
-      message: 'Crypto withdrawal request submitted successfully. Real-time updates will be sent via WebSocket.',
+      message: 'Crypto withdrawal request submitted successfully',
       data: {
-        withdrawalId: withdrawal.withdrawalId,
+        id: withdrawal._id.toString(),
+        transactionId: withdrawal.withdrawalId,
+        amount: amount.toFixed(2),
+        currency: coinSymbol.toUpperCase(),
+        network,
+        address: walletAddress,
+        status: 'pending',
+        date: withdrawal.requestedAt.toISOString(),
+        fee: fees.toFixed(2),
         totalBalance: remainingBalance,
         availableBalance: availableAfter,
-        lockedBalance: amount,
-        withdrawAmount: amount,
-        fees,
-        netAmount,
-        coinSymbol: coinSymbol.toUpperCase(),
-        network,
-        walletAddress,
-        status: 'pending'
+        lockedBalance: amount
       }
     })
 
@@ -228,6 +202,78 @@ router.post('/withdraw', async (req: Request, res: Response) => {
     
     return res.status(500).json({
       success: false, 
+      message: error.message || 'Internal server error'
+    });
+  }
+});
+
+// Get withdrawal history for a user
+router.get('/withdraw/history', async (req: Request, res: Response) => {
+  try {
+    const { timestamp, signature, hash } = req.query;
+
+    if (timestamp === undefined || signature === undefined || hash === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: timestamp, signature, hash'
+      });
+    }
+
+    const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
+
+     const { success , data } = verifySignature({ timestamp, signature, hash }, secretKey);
+    if (!success) {
+      return res.status(401).json({ success: false, message: 'Invalid signature or request expired' });
+    }  
+ 
+    const { telegramId } = JSON.parse(data as string);
+
+    if (!telegramId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    // Find user to verify they exist
+    const user = await User.findOne({ userId : telegramId });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Fetch withdrawal history for the user, sorted by most recent first
+    const withdrawals = await Withdrawal.find({ userId : telegramId})
+      .sort({ requestedAt: -1 })
+      .limit(100) // Limit to last 100 withdrawals
+      .lean();
+
+    // Transform the data to match frontend WithdrawTransaction interface
+    const transformedWithdrawals = withdrawals.map((withdrawal: any) => ({
+      id: withdrawal._id.toString(),
+      amount: withdrawal.amount.toFixed(2),
+      currency: withdrawal.currency,
+      network: withdrawal.network,
+      address: withdrawal.address,
+      status: withdrawal.status,
+      date: withdrawal.requestedAt.toISOString(),
+      transactionId: withdrawal.withdrawalId,
+      fee: withdrawal.fee ? withdrawal.fee.toFixed(2) : undefined,
+      txHash: withdrawal.txHash || undefined
+    }));
+
+    return res.json({
+      success: true,
+      data: transformedWithdrawals,
+      message: 'Withdrawal history fetched successfully'
+    });
+
+  } catch (error: any) {
+    console.error('Error fetching withdrawal history:', error);
+    return res.status(500).json({
+      success: false,
       message: error.message || 'Internal server error'
     });
   }

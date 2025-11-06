@@ -13,9 +13,7 @@ export interface IUser extends Document {
   userId: number
   username?: string
   referralCode: string
-  balanceTK: number
   referralCount: number
-  dailyAdLimit: number
   watchedToday: number
   telegramBonus: number
   youtubeBonus: number
@@ -62,21 +60,13 @@ const UserSchema = new Schema<IUser>({
     default: generateReferralCode,
     index: true
   },
-  balanceTK: {
-    type: Number,
-    default: 0,
-    min: [0, 'Balance cannot be negative']
-  },
+ 
   referralCount: {
     type: Number,
     default: 0,
     min: [0, 'Referral count cannot be negative']
   },
-  dailyAdLimit: {
-    type: Number,
-    default: 10,
-    min: [1, 'Daily ad limit must be at least 1']
-  },
+ 
   watchedToday: {
     type: Number,
     default: 0,

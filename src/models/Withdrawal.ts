@@ -1,35 +1,23 @@
-import mongoose, { Schema, Document, Model } from 'mongoose'
+import mongoose, { Schema, Document } from 'mongoose'
 
+// Matches frontend WithdrawTransaction interface
 export interface IWithdrawal extends Document {
-  withdrawalId: string
+  withdrawalId: string // Matches 'transactionId' in frontend
   userId: string
   amount: number
-  method: 'Bkash' | 'nagad' | 'Binance'  
-  accountDetails: {
-    accountNumber: string
-    accountName: string
-    bankName?: string
-    branchName?: string
-  }
-  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled'
-  requestedAt: Date
+  currency: string // USDT, BTC, ETH, BNB, TRX
+  network: string // TRC20, ERC20, BEP20, etc.
+  address: string // Wallet address
+  status: 'completed' | 'pending' | 'failed' | 'processing'
+  requestedAt: Date // Matches 'date' in frontend
+  fee?: number
+  txHash?: string // Blockchain transaction hash
   processedAt?: Date
-  processedBy?: number // Admin userId who processed it
-  rejectionReason?: string
-  transactionId?: string
-  fees: number
-  netAmount: number // amount - fees
-  metadata?: {
-    ipAddress?: string
-    userAgent?: string
-    adminNotes?: string
-    [key: string]: any
-  }
+  processedBy?: number
   createdAt: Date
   updatedAt: Date
 }
 
- 
 // Function to generate unique withdrawal ID
 function generateWithdrawalId(): string {
   const timestamp = Date.now().toString(36)
@@ -53,37 +41,33 @@ const WithdrawalSchema = new Schema<IWithdrawal>({
   amount: {
     type: Number,
     required: true,
+    min: 0
   },
-  method: {
+  currency: {
     type: String,
     required: true,
-    enum: ['Bkash', 'nagad', 'rocket', 'Binance'],
+    trim: true,
+    uppercase: true,
     index: true
   },
-  accountDetails: {
-    accountNumber: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    accountName: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    bankName: {
-      type: String,
-      trim: true
-    },
-    branchName: {
-      type: String,
-      trim: true
-    }
+  network: {
+    type: String,
+    required: true,
+    trim: true,
+    index: true
+  },
+  address: {
+    type: String,
+    required: true,
+    trim: true,
+    minlength: 26,
+    maxlength: 62,
+    index: true
   },
   status: {
     type: String,
     required: true,
-    enum: ['pending', 'approved', 'rejected', 'completed', 'cancelled'],
+    enum: ['completed', 'pending', 'failed', 'processing'],
     default: 'pending',
     index: true
   },
@@ -92,42 +76,28 @@ const WithdrawalSchema = new Schema<IWithdrawal>({
     default: Date.now,
     index: true
   },
+  fee: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  txHash: {
+    type: String,
+    trim: true,
+    index: true
+  },
   processedAt: {
     type: Date,
     index: true
   },
-  
-  rejectionReason: {
-    type: String,
-    trim: true,
-    maxlength: 500
-  },
-  transactionId: {
-    type: String,
-    trim: true,
-    index: true
-  },
-  fees: {
-    type: Number,
-    required: true,
-    default: 0,
-    min: 0
-  },
-  netAmount: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  metadata: {
-    type: Schema.Types.Mixed,
-    default: {}
+  processedBy: {
+    type: Number
   }
 }, {
   timestamps: true,
   collection: 'withdrawals'
 })
 
-
-const Withdrawal = (mongoose.models.Withdrawal || mongoose.model<IWithdrawal>('Withdrawal', WithdrawalSchema))  
+const Withdrawal = mongoose.models.Withdrawal || mongoose.model<IWithdrawal>('Withdrawal', WithdrawalSchema)
 
 export default Withdrawal

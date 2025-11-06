@@ -26,9 +26,9 @@ router.get('/spin-wheel/config', async (req: Request, res: Response) => {
       });
     }
 
-    const { userId } = JSON.parse(sigData as string);
+    const { telegramId } = JSON.parse(sigData as string);
 
-    if (!userId) {
+    if (!telegramId) {
       return res.status(400).json({
         success: false,
         message: 'User ID is required'
@@ -36,7 +36,7 @@ router.get('/spin-wheel/config', async (req: Request, res: Response) => {
     }
 
     // Find user
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId : telegramId});
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -111,10 +111,10 @@ router.get('/spin-wheel/config', async (req: Request, res: Response) => {
     }
 
     // Get or create spin ticket
-    let spinTicket = await SpinTicket.findOne({ userId });
+    let spinTicket = await SpinTicket.findOne({ userId : telegramId });
     if (!spinTicket) {
       spinTicket = await SpinTicket.create({
-        userId,
+        userId : telegramId,
         ticketCount: 0,
         totalPurchased: 0,
         totalSpins: 0,
@@ -201,15 +201,12 @@ router.post('/spin-wheel/purchase-ticket', async (req: Request, res: Response) =
     });
   }
 
-  const { userId, quantity = 1, ticketPrice = 100  } = JSON.parse(data as string);
+  const { telegramId , quantity = 1, ticketPrice = 100  } = JSON.parse(data as string);
   
 
     // Validate input
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: 'User ID is required'
-      });
+    if (!telegramId) {
+      return res.status(400).json({  success: false,  message: 'User ID is required' });
     }
 
     if (quantity < 1 || quantity > 100) {
@@ -220,7 +217,7 @@ router.post('/spin-wheel/purchase-ticket', async (req: Request, res: Response) =
     }
 
     // Find user
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId : telegramId });
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -240,10 +237,10 @@ router.post('/spin-wheel/purchase-ticket', async (req: Request, res: Response) =
     const totalCost = quantity * ticketPrice;
 
     // Get or create wallet
-    let wallet = await Wallet.findOne({ userId });
+    let wallet = await Wallet.findOne({ userId : telegramId});
     if (!wallet) {
       wallet = await Wallet.create({
-        userId,
+        userId : telegramId,
         balances: { xp: 0, usdt: 0, spin: 0 },
         locked: { xp: 0, usdt: 0, spin: 0 },
         totalEarned: { xp: 0, usdt: 0, spin: 0 },
@@ -265,13 +262,14 @@ router.post('/spin-wheel/purchase-ticket', async (req: Request, res: Response) =
     wallet.balances.xp -= totalCost;
     wallet.totalSpent.xp += totalCost;
     wallet.lastTransaction = new Date();
+    wallet.balances.spin = quantity;
     await wallet.save();
 
     // Update or create spin ticket record
-    let spinTicket = await SpinTicket.findOne({ userId });
+    let spinTicket = await SpinTicket.findOne({ userId : telegramId });
     if (!spinTicket) {
       spinTicket = await SpinTicket.create({
-        userId,
+        userId : telegramId,
         ticketCount : quantity,
         totalPurchased: quantity,
         lastPurchaseDate: new Date()
@@ -320,9 +318,9 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
       });
     }
 
-    const { userId } = JSON.parse(sigData as string);
+    const {  telegramId } = JSON.parse(sigData as string);
 
-    if (!userId) {
+    if (!telegramId) {
       return res.status(400).json({
         success: false,
         message: 'User ID is required'
@@ -330,7 +328,7 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
     }
 
     // Find user
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId  : telegramId });
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -356,10 +354,10 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
     }
 
     // Get spin ticket
-    let spinTicket = await SpinTicket.findOne({ userId });
+    let spinTicket = await SpinTicket.findOne({ userId : telegramId });
     if (!spinTicket) {
       spinTicket = await SpinTicket.create({
-        userId,
+        userId : telegramId,
         ticketCount: 0,
         totalPurchased: 0,
         totalSpins: 0,
@@ -419,10 +417,10 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
     await spinTicket.save();
 
     // Get or create wallet
-    let wallet = await Wallet.findOne({ userId });
+    let wallet = await Wallet.findOne({ userId : telegramId});
     if (!wallet) {
       wallet = await Wallet.create({
-        userId,
+        userId : telegramId,
         balances: { xp: 0, usdt: 0, spin: 0 },
         locked: { xp: 0, usdt: 0, spin: 0 },
         totalEarned: { xp: 0, usdt: 0, spin: 0 },
@@ -442,7 +440,7 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
 
     // Record spin history
     await SpinHistory.create({
-      userId,
+      userId : telegramId,
       segmentId: winningSegment.id,
       segmentLabel: winningSegment.label,
       winAmount: winningSegment.value,
@@ -455,12 +453,12 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
     const nextSpinTime = lastReset.getTime() + 24 * 60 * 60 * 1000;
 
     // Emit socket events for real-time updates
-    const userRoom = `user:${userId}`;
+    const userRoom = `user:${telegramId}`;
      
     // Emit XP update
     io.to(userRoom).emit('user:xp:update', {
       type: 'user:xp:update',
-      userId,
+      userId : telegramId,
       xp: wallet.balances.xp,
       timestamp: new Date()
     });
@@ -468,7 +466,7 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
     // Emit spin result
     io.to(userRoom).emit('spin:result', {
       type: 'spin:result',
-      userId,
+      userId : telegramId,
       result: {
         prizeId: winningSegment.id,
         label: winningSegment.label,
@@ -511,90 +509,7 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/v1/spin-wheel/unlock-extra-spin - Unlock extra spin by watching ad
-router.post('/spin-wheel/unlock-extra-spin', async (req: Request, res: Response) => {
-  try {
-    const { signature, timestamp, hash } = req.body;
-    
-    const { success: sigSuccess, data: sigData } = verifySignature(
-      { signature, timestamp, hash },
-      process.env.SPIN_WHEEL_SECRET_KEY || 'app'
-    );
-
-    if (!sigSuccess) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid signature or expired timestamp'
-      });
-    }
-
-    const { userId } = JSON.parse(sigData as string);
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: 'User ID is required'
-      });
-    }
-
-    // Find user
-    const user = await User.findOne({ userId });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // Get config
-    const config = await SpinWheelConfig.findOne({}).sort({ createdAt: -1 });
-    const maxExtraSpins = config?.maxExtraSpins || 6;
-
-    // Get spin ticket
-    let spinTicket = await SpinTicket.findOne({ userId });
-    if (!spinTicket) {
-      spinTicket = await SpinTicket.create({
-        userId,
-        ticketCount: 0,
-        totalPurchased: 0,
-        totalSpins: 0,
-        totalWinnings: 0,
-        freeSpinsUsed: 0,
-        extraSpinsUnlocked: 0,
-        extraSpinsUsed: 0,
-        lastResetDate: new Date()
-      });
-    }
-
-    // Check if can unlock more
-    if ((spinTicket.extraSpinsUnlocked || 0) >= maxExtraSpins) {
-      return res.status(400).json({
-        success: false,
-        message: 'Maximum extra spins already unlocked'
-      });
-    }
-
-    // Unlock extra spin
-    spinTicket.extraSpinsUnlocked = (spinTicket.extraSpinsUnlocked || 0) + 1;
-    await spinTicket.save();
-
-    return res.json({
-      success: true,
-      message: 'Extra spin unlocked successfully!',
-      data: {
-        extraSpinsUnlocked: spinTicket.extraSpinsUnlocked,
-        canSpin: true
-      }
-    });
-
-  } catch (error) {
-    console.error('Unlock Extra Spin error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
+ 
 
 // POST /api/v1/spin-wheel/spin-with-ticket - Spin using a purchased ticket
 router.post('/spin-wheel/spin-with-ticket', async (req: Request, res: Response) => {
@@ -613,10 +528,10 @@ router.post('/spin-wheel/spin-with-ticket', async (req: Request, res: Response) 
       });
     }
 
-    const { userId } = JSON.parse(sigData as string);
+     
+    const { telegramId } = JSON.parse(sigData as string);
 
-
-    if (!userId) {
+    if (!telegramId) {
       return res.status(400).json({
         success: false,
         message: 'User ID is required'
@@ -624,7 +539,7 @@ router.post('/spin-wheel/spin-with-ticket', async (req: Request, res: Response) 
     }
 
     // Find user
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId : telegramId });
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -650,10 +565,10 @@ router.post('/spin-wheel/spin-with-ticket', async (req: Request, res: Response) 
     }
 
     // Get or create spin ticket
-    let spinTicket = await SpinTicket.findOne({ userId });
+    let spinTicket = await SpinTicket.findOne({ userId : telegramId});
     if (!spinTicket) {
       spinTicket = await SpinTicket.create({
-        userId,
+        userId : telegramId,
         ticketCount: 0,
         totalPurchased: 0,
         totalSpins: 0,
@@ -729,10 +644,10 @@ router.post('/spin-wheel/spin-with-ticket', async (req: Request, res: Response) 
     await spinTicket.save();
 
     // Get or create wallet
-    let wallet = await Wallet.findOne({ userId });
+    let wallet = await Wallet.findOne({ userId : telegramId});
     if (!wallet) {
       wallet = await Wallet.create({
-        userId,
+        userId : telegramId,
         balances: { xp: 0, usdt: 0, spin: 0 },
         locked: { xp: 0, usdt: 0, spin: 0 },
         totalEarned: { xp: 0, usdt: 0, spin: 0 },
@@ -745,14 +660,11 @@ router.post('/spin-wheel/spin-with-ticket', async (req: Request, res: Response) 
     wallet.totalEarned.xp += winningSegment.value;
     wallet.lastTransaction = new Date();
     await wallet.save();
-
-    // Also update user XP for backward compatibility
-    user.xp = (user.xp || 0) + winningSegment.value;
     await user.save();
 
     // Record spin history
     await SpinHistory.create({
-      userId,
+      userId : telegramId,
       segmentId: winningSegment.id,
       segmentLabel: winningSegment.label,
       winAmount: winningSegment.value,
@@ -760,38 +672,16 @@ router.post('/spin-wheel/spin-with-ticket', async (req: Request, res: Response) 
     });
 
     // Emit socket events for real-time updates
-    const userRoom = `user:${userId}`;
+    const userRoom = `user:${telegramId}`;
     
     // Emit XP update
     io.to(userRoom).emit('user:xp:update', {
       type: 'user:xp:update',
-      userId,
+      userId : telegramId,
       xp: wallet.balances.xp,
-      userXP: user.xp,
       timestamp: new Date()
     });
-
-    // Emit spin result
-    io.to(userRoom).emit('spin:result', {
-      type: 'spin:result',
-      userId,
-      result: {
-        prizeId: winningSegment.id,
-        label: winningSegment.label,
-        amount: winningSegment.value,
-        color: winningSegment.color
-      },
-      timestamp: new Date()
-    });
-
-    // Emit tickets update
-    io.to(userRoom).emit('spin:tickets:update', {
-      type: 'spin:tickets:update',
-      userId,
-      ticketCount: spinTicket.ticketCount,
-      extraSpinsUnlocked: spinTicket.extraSpinsUnlocked,
-      timestamp: new Date()
-    });
+ 
 
     return res.json({
       success: true,
@@ -820,19 +710,23 @@ router.post('/spin-wheel/spin-with-ticket', async (req: Request, res: Response) 
 });
 
 // GET /api/v1/spin-wheel/user-tickets/:userId - Get user's ticket info
-router.get('/spin-wheel/user-tickets/:userId', async (req: Request, res: Response) => {
+router.get('/spin-wheel/user-tickets', async (req: Request, res: Response) => {
   try {
-    const userId = parseInt(req.params.userId);
+   const {  hash , timestamp , signature } = req.query;
+   const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || 'app';
+   const { success , data  } = verifySignature({ timestamp, signature, hash }, secretKey);
 
-    if (isNaN(userId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid user ID'
-      });
-    }
+   if (!success) {
+     return res.status(401).json({
+       success: false,
+       message: 'Invalid signature or request expired'
+     });
+   }
+   
 
+   const { telegramId } = JSON.parse(data as string);
     // Find user
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId : telegramId });
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -841,10 +735,10 @@ router.get('/spin-wheel/user-tickets/:userId', async (req: Request, res: Respons
     }
 
     // Get or create spin ticket
-    let spinTicket = await SpinTicket.findOne({ userId });
+    let spinTicket = await SpinTicket.findOne({ userId : telegramId});
     if (!spinTicket) {
       spinTicket = await SpinTicket.create({
-        userId,
+        userId : telegramId,
         ticketCount: 0,
         totalPurchased: 0,
         totalSpins: 0,
@@ -858,7 +752,7 @@ router.get('/spin-wheel/user-tickets/:userId', async (req: Request, res: Respons
     return res.json({
       success: true,
       data: {
-        userId,
+        userId : telegramId,
         ticketCount: spinTicket.ticketCount,
         totalPurchased: spinTicket.totalPurchased,
         totalSpins: spinTicket.totalSpins,
@@ -871,17 +765,16 @@ router.get('/spin-wheel/user-tickets/:userId', async (req: Request, res: Respons
       }
     });
 
-  } catch (error) {
-    console.error('Get User Tickets error:', error);
+  } catch (error :any) {
     return res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: error.message || 'Internal server error'
     });
   }
 });
 
 // GET /api/v1/spin-wheel/spin-history/:userId - Get user's spin history
-router.get('/spin-wheel/spin-history/:userId', async (req: Request, res: Response) => {
+router.get('/spin-wheel/spin-history', async (req: Request, res: Response) => {
   try {
     const userId = parseInt(req.params.userId);
     const limit = parseInt(req.query.limit as string) || 20;
@@ -929,3 +822,5 @@ router.get('/spin-wheel/spin-history/:userId', async (req: Request, res: Respons
 });
 
 export default router;
+
+ 

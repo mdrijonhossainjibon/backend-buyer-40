@@ -5,7 +5,7 @@ import AdsSettings from 'models/AdsSettings'
  
 const router = Router();
 // GET /ads-settings - Get all ads settings
-router.get('/ads-settings', async (req: Request, res: Response) => {
+router.get('/ads/settings', async (req: Request, res: Response) => {
   try {
     const adsSettings = await AdsSettings.findOne({})
       .sort({ createdAt: -1 })

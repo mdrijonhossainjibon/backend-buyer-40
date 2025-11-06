@@ -3,12 +3,14 @@ import {
   ConnectionController,
   SwapController,
   WithdrawalController,
+  ConverterSocketController,
 } from '../controllers/socket';
 
  
 const connectionController = new ConnectionController();
 export const swapController = new SwapController();
-export const withdrawalController = new WithdrawalController(); 
+export const withdrawalController = new WithdrawalController();
+let converterController: ConverterSocketController; 
 
 
 /**
@@ -17,11 +19,15 @@ export const withdrawalController = new WithdrawalController();
 export function initializeSocket(io: SocketIOServer): void {
   swapController.setIO(io);
   withdrawalController.setIO(io);
+  converterController = new ConverterSocketController(io);
   
   
   io.on('connection', (socket: Socket) => {
     // Handle connection
     const clientId = connectionController.onConnection(socket);
+    
+    // Register converter events
+    converterController.registerEvents(socket);
     
     // Handle ping/pong for connection health
     socket.on('ping', () => {

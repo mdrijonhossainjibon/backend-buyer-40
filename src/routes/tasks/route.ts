@@ -3,9 +3,10 @@ import { verifySignature } from 'auth-fingerprint'
 import TaskModel from 'models/Task'
 import ClaimedTask from 'models/ClaimedTask'
 import User from 'models/User'
-import Notification from 'models/Notification'
+import Wallet from 'models/Wallet'
 import Activity from 'models/Activity'
 import { checkTelegramMembership, extractTelegramId, sendTelegramNotification } from 'lib/telegramVerification'
+import { io } from '../../server'
 
 const router = Router();
 
@@ -23,23 +24,23 @@ router.get('/tasks', async (req: Request, res: Response) => {
     }
 
     const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
-    const result = verifySignature({ timestamp, signature, hash }, secretKey);
+    const { success , data } = verifySignature({ timestamp, signature, hash }, secretKey);
 
-    if (!result.success) {
+    if (!success) {
       return res.status(401).json({
         success: false,
         message: 'Invalid signature or request expired'
       });
     }
 
-    const { userId } = JSON.parse(result.data as string);
-
+    const { telegramId } = JSON.parse(data as string);
+  
     const tasks = await TaskModel.find();
-
+     
     // Check claimed status for each task
     const formattedTasks = await Promise.all(tasks.map(async (task) => {
       const claimedTask = await ClaimedTask.findOne({
-        userId,
+        userId : telegramId ,
         taskId: task._id.toString()
       });
 
@@ -72,21 +73,21 @@ router.get('/tasks', async (req: Request, res: Response) => {
 
 
 // POST /api/v1/tasks - claim a task
-router.post('/tasks', async (req: Request, res: Response) => {
+router.post('/tasks/claim', async (req: Request, res: Response) => {
   try {
     const { timestamp, signature, hash } = req.body;
 
-    const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
-    const result = verifySignature({ timestamp, signature, hash }, secretKey);
+    const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || 'app';
+    const { success , data }= verifySignature({ timestamp, signature, hash }, secretKey);
 
-    if (!result.success) {
+    if (!success) {
       return res.status(401).json({
         success: false,
         message: 'Invalid signature or request expired'
       });
     }
 
-    const { userId, taskId } = JSON.parse(result.data as string);
+    const { telegramId ,  taskId } = JSON.parse(data as string);
 
     // Find the task
     const task = await TaskModel.findById(taskId);
@@ -98,7 +99,7 @@ router.post('/tasks', async (req: Request, res: Response) => {
     }
 
     // Find the user
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId : telegramId });
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -107,7 +108,7 @@ router.post('/tasks', async (req: Request, res: Response) => {
     }
 
     // Check if task already claimed
-    const existingClaim = await ClaimedTask.findOne({ userId, taskId });
+    const existingClaim = await ClaimedTask.findOne({ userId : telegramId, taskId });
 
     // If already claimed with verified or pending status, return error
     if (existingClaim && (existingClaim.status === 'verified' || existingClaim.status === 'pending')) {
@@ -125,19 +126,19 @@ router.post('/tasks', async (req: Request, res: Response) => {
     if (task.platform.toLowerCase() === 'telegram') {
       const channelId = extractTelegramId(task.link);
 
-      const membershipCheck = await checkTelegramMembership(userId, channelId);
+      const membershipCheck = await checkTelegramMembership(telegramId, channelId);
 
       if (!membershipCheck.isMember) {
         // Only create rejected claim if no existing claim
         if (!existingClaim) {
           const pendingClaim = new ClaimedTask({
-            userId,
+            userId : telegramId,
             taskId: task._id.toString(),
             platform: task.platform,
             status: 'rejected',
             reward: task.reward,
             metadata: {
-              telegramUserId: userId,
+              telegramUserId: telegramId,
               channelId,
               verificationAttempts: 1,
               error: membershipCheck.error || 'Not a member'
@@ -148,7 +149,7 @@ router.post('/tasks', async (req: Request, res: Response) => {
 
         // Send notification to user with inline keyboard
         await sendTelegramNotification(
-          userId,
+          telegramId,
           `❌ *Task Verification Failed*\n\n` +
           `Task: ${task.title}\n` +
           `Reason: You must join the channel/group first\n\n` +
@@ -173,19 +174,7 @@ router.post('/tasks', async (req: Request, res: Response) => {
           }
         );
 
-        // Create notification in database
-        await Notification.create({
-          userId,
-          title: 'Task Verification Failed',
-          message: `Please join ${task.link} to claim this task`,
-          type: 'warning',
-          priority: 'medium',
-          metadata: {
-            taskId: task._id.toString(),
-            taskTitle: task.title
-          }
-        });
-
+        
         return res.status(400).json({
           success: false,
           message: 'You must join the Telegram channel/group first',
@@ -204,7 +193,7 @@ router.post('/tasks', async (req: Request, res: Response) => {
           existingClaim.claimedAt = new Date();
           existingClaim.completedAt = new Date();
           existingClaim.metadata = {
-            telegramUserId: userId,
+            telegramUserId: telegramId,
             channelId,
             membershipStatus: membershipCheck.status
           };
@@ -212,13 +201,13 @@ router.post('/tasks', async (req: Request, res: Response) => {
         } else {
           // Create new verified claim
           const claim = new ClaimedTask({
-            userId,
+            userId : telegramId,
             taskId: task._id.toString(),
             platform: task.platform,
             status: 'verified',
             reward: task.reward,
             metadata: {
-              telegramUserId: userId,
+              telegramUserId: telegramId,
               channelId,
               membershipStatus: membershipCheck.status
             }
@@ -227,16 +216,29 @@ router.post('/tasks', async (req: Request, res: Response) => {
         }
       }
 
-      // Add reward to user balance
+      // Get or create wallet
+      let wallet = await Wallet.findOne({ userId: telegramId });
+      if (!wallet) {
+        wallet = await Wallet.create({
+          userId: telegramId,
+          balances: { xp: 0, usdt: 0, spin: 0 },
+          locked: { xp: 0, usdt: 0, spin: 0 },
+          totalEarned: { xp: 0, usdt: 0, spin: 0 },
+          totalSpent: { xp: 0, usdt: 0, spin: 0 }
+        });
+      }
+
+      // Add reward to wallet balance
       const rewardAmount = parseFloat(task.reward);
-      user.balanceTK += rewardAmount;
-      user.totalEarned += rewardAmount;
-      user.telegramBonus += rewardAmount;
-      await user.save();
+      wallet.balances.usdt += rewardAmount;
+      wallet.totalEarned.usdt += rewardAmount;
+      wallet.lastTransaction = new Date();
+      await wallet.save();
+ 
 
       // Create activity record
       await Activity.create({
-        userId,
+        userId : telegramId,
         activityType: 'task_complete',
         description: `Completed task: ${task.title}`,
         amount: rewardAmount,
@@ -251,26 +253,18 @@ router.post('/tasks', async (req: Request, res: Response) => {
 
       // Send success notification via Telegram
       await sendTelegramNotification(
-        userId,
+        telegramId,
         `🎉 *Task Completed Successfully!*\n\n` +
         `Task: ${task.title}\n` +
         `Reward: ${task.reward} USDT\n\n` +
-        `💰 New Balance: ${user.balanceTK.toFixed(2)} USDT\n\n` +
+        `💰 USDT Balance: ${wallet.balances.usdt.toFixed(2)} USDT\n` +
+        `⭐ XP Balance: ${wallet.balances.xp.toFixed(2)} XP\n\n` +
         `Keep completing tasks to earn more! 🚀`
       );
-
-      // Create notification in database
-      await Notification.create({
-        userId,
-        title: 'Task Completed!',
-        message: `You earned ${task.reward} USDT for completing "${task.title}"`,
-        type: 'success',
-        priority: 'high',
-        metadata: {
-          taskId: task._id.toString(),
-          taskTitle: task.title,
-          reward: task.reward
-        }
+ 
+      io.to(`user:${telegramId}`).emit('user:xp:update', {
+        userId: telegramId,
+        xp: wallet.balances.xp
       });
 
       return res.status(201).json({
@@ -279,43 +273,70 @@ router.post('/tasks', async (req: Request, res: Response) => {
         data: {
           taskId: task._id.toString(),
           reward: task.reward,
-          newBalance: user.balanceTK,
+          newBalance: wallet.balances.usdt,
           status: 'completed'
         }
       });
     }
 
-    // For non-Telegram platforms, create pending claim
+    // For non-Telegram platforms 
     const claimedTask = new ClaimedTask({
-      userId,
+      userId : telegramId,
       taskId: task._id.toString(),
       platform: task.platform,
-      status: 'pending',
+      status: 'verified',
       reward: task.reward
     });
     await claimedTask.save();
 
-    // Create notification
-    await Notification.create({
-      userId,
-      title: 'Task Claimed',
-      message: `Your claim for "${task.title}" is pending verification`,
-      type: 'info',
-      priority: 'medium',
+    // Get or create wallet
+    let wallet = await Wallet.findOne({ userId: telegramId });
+    if (!wallet) {
+      wallet = await Wallet.create({
+        userId: telegramId,
+        balances: { xp: 0, usdt: 0, spin: 0 },
+        locked: { xp: 0, usdt: 0, spin: 0 },
+        totalEarned: { xp: 0, usdt: 0, spin: 0 },
+        totalSpent: { xp: 0, usdt: 0, spin: 0 }
+      });
+    }
+
+    // Add reward to wallet balance
+    const rewardAmount = parseFloat(task.reward);
+    wallet.balances.xp += rewardAmount;
+    wallet.totalEarned.xp += rewardAmount;
+    wallet.lastTransaction = new Date();
+    await wallet.save();
+
+    // Create activity record
+    await Activity.create({
+      userId : telegramId,
+      activityType: 'task_complete',
+      description: `Completed task: ${task.title}`,
+      amount: rewardAmount,
+      status: 'completed',
+      completedAt: new Date(),
       metadata: {
         taskId: task._id.toString(),
+        platform: task.platform,
         taskTitle: task.title
       }
     });
 
+    
 
+    io.to(`user:${telegramId}`).emit('user:xp:update', {
+      userId: telegramId,
+      xp: wallet.balances.xp
+    });
 
     return res.status(201).json({
       success: true,
-      message: 'Task claimed successfully, pending verification',
+      message: 'Task claimed and verified successfully',
       data: {
         taskId: task._id.toString(),
-        status: 'pending'
+        status: 'verified',
+        reward: task.reward,
       }
     });
 
