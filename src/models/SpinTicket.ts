@@ -56,8 +56,8 @@ const SpinTicketSchema = new Schema<ISpinTicket>({
   },
   extraSpinsUnlocked: {
     type: Number,
-    default: 0,
-    min: 0,
+    default: 6,
+    min: 1,
     required: true
   },
   extraSpinsUsed: {

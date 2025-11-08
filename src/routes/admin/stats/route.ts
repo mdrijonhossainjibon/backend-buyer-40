@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import User from 'models/User';
 import Withdrawal from 'models/Withdrawal';
+import { Wallet } from 'models';
 
 const router = Router();
 
@@ -27,119 +28,59 @@ router.get('/', async (req: Request, res: Response) => {
     ]);
     const totalEarnings = totalEarningsResult[0]?.totalEarned || 0;
     
-    // Get total withdrawals (completed)
-    const totalWithdrawalsResult = await Withdrawal.aggregate([
-      {
-        $match: { status: 'approved' }
-      },
+    // Get withdrawal statistics by status
+    const withdrawalStats = await Withdrawal.aggregate([
       {
         $group: {
-          _id: null,
-          totalWithdrawn: { $sum: '$amount' },
-          withdrawalCount: { $sum: 1 }
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' }
         }
       }
     ]);
-    const totalWithdrawn = totalWithdrawalsResult[0]?.totalWithdrawn || 0;
-    const withdrawalCount = totalWithdrawalsResult[0]?.withdrawalCount || 0;
     
-    // Get pending withdrawals
-    const pendingWithdrawalsResult = await Withdrawal.aggregate([
-      {
-        $match: { status: 'pending' }
-      },
-      {
-        $group: {
-          _id: null,
-          pendingAmount: { $sum: '$amount' },
-          pendingCount: { $sum: 1 }
-        }
-      }
-    ]);
-    const pendingWithdrawals = pendingWithdrawalsResult[0]?.pendingAmount || 0;
-    const pendingWithdrawalsCount = pendingWithdrawalsResult[0]?.pendingCount || 0;
+    // Process withdrawal stats
+    const withdrawalData = {
+      total: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      totalAmount: 0,
+      pendingAmount: 0
+    };
     
-    // Get current total balance across all users
-    const totalBalanceResult = await User.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalBalance: { $sum: '$balanceTK' }
-        }
-      }
-    ]);
-    const totalBalance = totalBalanceResult[0]?.totalBalance || 0;
-    
-    // Get users registered today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    const usersToday = await User.countDocuments({
-      createdAt: {
-        $gte: today,
-        $lt: tomorrow
+    withdrawalStats.forEach(stat => {
+      withdrawalData.total += stat.count;
+      withdrawalData.totalAmount += stat.totalAmount;
+      
+      if (stat._id === 'pending') {
+        withdrawalData.pending = stat.count;
+        withdrawalData.pendingAmount = stat.totalAmount;
+      } else if (stat._id === 'approved') {
+        withdrawalData.approved = stat.count;
+      } else if (stat._id === 'rejected') {
+        withdrawalData.rejected = stat.count;
       }
     });
     
-    // Get users registered this month
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const usersThisMonth = await User.countDocuments({
-      createdAt: {
-        $gte: startOfMonth
-      }
-    });
-    
-    // Get referral statistics
-    const referralStats = await User.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalReferrals: { $sum: '$referralCount' },
-          usersWithReferrals: {
-            $sum: {
-              $cond: [{ $gt: ['$referralCount', 0] }, 1, 0]
-            }
-          }
-        }
-      }
-    ]);
-    const totalReferrals = referralStats[0]?.totalReferrals || 0;
-    const usersWithReferrals = referralStats[0]?.usersWithReferrals || 0;
     
     // Response object with all statistics
     const stats = {
       users: {
         total: totalUsers,
         active: activeUsers,
-        suspended: suspendedUsers,
-        registeredToday: usersToday,
-        registeredThisMonth: usersThisMonth,
-        withReferrals: usersWithReferrals
+        suspended: suspendedUsers
       },
       earnings: {
-        totalEarned: totalEarnings,
-        currentBalance: totalBalance,
-        averageEarningsPerUser: totalUsers > 0 ? Math.round((totalEarnings / totalUsers) * 100) / 100 : 0
+        totalEarned: totalEarnings
       },
       withdrawals: {
-        totalWithdrawn: totalWithdrawn,
-        withdrawalCount: withdrawalCount,
-        pendingAmount: pendingWithdrawals,
-        pendingCount: pendingWithdrawalsCount,
-        averageWithdrawal: withdrawalCount > 0 ? Math.round((totalWithdrawn / withdrawalCount) * 100) / 100 : 0
-      },
-      referrals: {
-        totalReferrals: totalReferrals,
-        averageReferralsPerUser: totalUsers > 0 ? Math.round((totalReferrals / totalUsers) * 100) / 100 : 0
-      },
-      summary: {
-        platformBalance: totalBalance,
-        totalPlatformValue: totalEarnings,
-        withdrawalRate: totalEarnings > 0 ? Math.round((totalWithdrawn / totalEarnings) * 10000) / 100 : 0, // Percentage
-        userGrowthRate: usersThisMonth > 0 && totalUsers > usersThisMonth ? 
-          Math.round(((usersThisMonth / (totalUsers - usersThisMonth)) * 100) * 100) / 100 : 0
+        total: withdrawalData.total,
+        pending: withdrawalData.pending,
+        approved: withdrawalData.approved,
+        rejected: withdrawalData.rejected,
+        totalAmount: withdrawalData.totalAmount,
+        pendingAmount: withdrawalData.pendingAmount
       }
     };
     
@@ -166,13 +107,31 @@ router.get('/detailed', async (req: Request, res: Response) => {
     // User status breakdown with additional metrics
     const userStatusBreakdown = await User.aggregate([
       {
+        $lookup: {
+          from: 'wallets',
+          localField: 'userId',
+          foreignField: 'userId',
+          as: 'wallet'
+        }
+      },
+      {
+        $unwind: {
+          path: '$wallet',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
         $group: {
           _id: '$status',
           count: { $sum: 1 },
-          totalBalance: { $sum: '$balanceTK' },
+          totalBalanceXP: { $sum: { $ifNull: ['$wallet.balances.xp', 0] } },
+          totalBalanceUSDT: { $sum: { $ifNull: ['$wallet.balances.usdt', 0] } },
+          totalBalanceSPIN: { $sum: { $ifNull: ['$wallet.balances.spin', 0] } },
           totalEarned: { $sum: '$totalEarned' },
           totalWithdrawn: { $sum: '$withdrawnAmount' },
-          avgBalance: { $avg: '$balanceTK' },
+          avgBalanceXP: { $avg: { $ifNull: ['$wallet.balances.xp', 0] } },
+          avgBalanceUSDT: { $avg: { $ifNull: ['$wallet.balances.usdt', 0] } },
+          avgBalanceSPIN: { $avg: { $ifNull: ['$wallet.balances.spin', 0] } },
           avgEarned: { $avg: '$totalEarned' }
         }
       }

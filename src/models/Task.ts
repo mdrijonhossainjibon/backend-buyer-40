@@ -1,13 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose'
-
-export interface Task {
-  id: string
-  platform: string
-  title: string
-  description: string
-  reward: string
-  link: string
-}
+ 
 
 export interface ITask extends Document {
   platform: string

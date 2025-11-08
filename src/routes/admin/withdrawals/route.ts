@@ -31,24 +31,21 @@ router.get('/', async (req: Request, res: Response) => {
     const formattedWithdrawals = await Promise.all(withdrawals.map(async (withdrawal) => {
       const user = await User.findOne({ userId: withdrawal.userId })
       return {
-        id: withdrawal.withdrawalId,
+        withdrawalId: withdrawal.withdrawalId, // Matches 'transactionId' in frontend
         userId: withdrawal.userId,
         username: user?.username || `${user?.profile?.firstName || ''} ${user?.profile?.lastName || ''}`.trim() || 'Unknown User',
         amount: withdrawal.amount,
-        netAmount: withdrawal.netAmount,
-        fees: withdrawal.fees,
-        method: withdrawal.method,
-        accountNumber: withdrawal.accountDetails?.accountNumber || '',
-        accountName: withdrawal.accountDetails?.accountName || '',
-        bankName: withdrawal.accountDetails?.bankName || '',
-        branchName: withdrawal.accountDetails?.branchName || '',
-        status: withdrawal.status,
-        requestTime: withdrawal.requestedAt,
-        processedTime: withdrawal.processedAt,
+        currency: withdrawal.currency, // USDT, BTC, ETH, BNB, TRX
+        network: withdrawal.network, // TRC20, ERC20, BEP20, etc.
+        address: withdrawal.address, // Wallet address
+        status: withdrawal.status, // 'completed' | 'pending' | 'failed' | 'processing'
+        requestedAt: withdrawal.requestedAt, // Matches 'date' in frontend
+        fee: withdrawal.fee,
+        txHash: withdrawal.txHash, // Blockchain transaction hash
+        processedAt: withdrawal.processedAt,
         processedBy: withdrawal.processedBy,
-        rejectionReason: withdrawal.rejectionReason,
-        transactionId: withdrawal.transactionId,
-        adminNote: withdrawal.metadata?.adminNotes || null
+        createdAt: withdrawal.createdAt,
+        updatedAt: withdrawal.updatedAt
       }
     }))
 
@@ -96,24 +93,21 @@ router.post('/', async (req: Request, res: Response) => {
       const formattedWithdrawals = await Promise.all(withdrawals.map(async (withdrawal) => {
         const user = await User.findOne({ userId: withdrawal.userId })
         return {
-          id: withdrawal.withdrawalId,
+          withdrawalId: withdrawal.withdrawalId, // Matches 'transactionId' in frontend
           userId: withdrawal.userId,
           username: user?.username || `${user?.profile?.firstName || ''} ${user?.profile?.lastName || ''}`.trim() || 'Unknown User',
           amount: withdrawal.amount,
-          netAmount: withdrawal.netAmount,
-          fees: withdrawal.fees,
-          method: withdrawal.method,
-          accountNumber: withdrawal.accountDetails?.accountNumber || '',
-          accountName: withdrawal.accountDetails?.accountName || '',
-          bankName: withdrawal.accountDetails?.bankName || '',
-          branchName: withdrawal.accountDetails?.branchName || '',
-          status: withdrawal.status,
-          requestTime: withdrawal.requestedAt,
-          processedTime: withdrawal.processedAt,
+          currency: withdrawal.currency, // USDT, BTC, ETH, BNB, TRX
+          network: withdrawal.network, // TRC20, ERC20, BEP20, etc.
+          address: withdrawal.address, // Wallet address
+          status: withdrawal.status, // 'completed' | 'pending' | 'failed' | 'processing'
+          requestedAt: withdrawal.requestedAt, // Matches 'date' in frontend
+          fee: withdrawal.fee,
+          txHash: withdrawal.txHash, // Blockchain transaction hash
+          processedAt: withdrawal.processedAt,
           processedBy: withdrawal.processedBy,
-          rejectionReason: withdrawal.rejectionReason,
-          transactionId: withdrawal.transactionId,
-          adminNote: withdrawal.metadata?.adminNotes || null
+          createdAt: withdrawal.createdAt,
+          updatedAt: withdrawal.updatedAt
         }
       }))
 

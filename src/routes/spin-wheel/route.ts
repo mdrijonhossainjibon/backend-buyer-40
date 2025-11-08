@@ -109,21 +109,12 @@ router.get('/spin-wheel/config', async (req: Request, res: Response) => {
         minBalanceRequired: 0
       });
     }
+    console.log(config.maxExtraSpins)
 
     // Get or create spin ticket
     let spinTicket = await SpinTicket.findOne({ userId : telegramId });
     if (!spinTicket) {
-      spinTicket = await SpinTicket.create({
-        userId : telegramId,
-        ticketCount: 0,
-        totalPurchased: 0,
-        totalSpins: 0,
-        totalWinnings: 0,
-        freeSpinsUsed: 0,
-        extraSpinsUnlocked: config.maxExtraSpins,
-        extraSpinsUsed: 0,
-        lastResetDate: new Date()
-      });
+      spinTicket = await SpinTicket.create({ userId : telegramId });
     }
 
     // Check if we need to reset daily spins
