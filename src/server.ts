@@ -13,6 +13,7 @@ import { initializeSocketIO } from './config/socket';
 import { initializeSocket } from './services/socket';
 import { socketAuthMiddleware } from './middlewares/socketAuth';
 import 'services/telegram';
+import { userActivityReminderJob } from './jobs/userActivityReminder';
 
 // Load environment variables
 dotenv.config();
@@ -124,6 +125,10 @@ httpServer.listen(PORT, () => {
   console.log(`📍 API endpoint: http://localhost:${PORT}/api`);
   console.log(`🔌 WebSocket endpoint: ws://localhost:${PORT}/ws/withdraw`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Start cron jobs
+  userActivityReminderJob.start();
+  console.log('⏰ Cron jobs initialized');
 });
 
 export default app;
