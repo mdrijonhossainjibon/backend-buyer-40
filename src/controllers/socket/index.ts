@@ -1,6 +1,5 @@
 // Export all socket controllers
 export { WithdrawalController } from './withdrawalController';
-export { BalanceController } from './balanceController';
 export { ConnectionController } from './connectionController';
 export { SwapController } from './swapController';
 export { default as ConverterSocketController } from './converterController';

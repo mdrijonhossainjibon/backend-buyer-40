@@ -1,22 +1,6 @@
 version: '3.8'
 
 services:
-  # Redis for pub/sub
-  redis:
-    image: redis:7-alpine
-    container_name: earnfrom-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-
   # MongoDB database
   mongodb:
     image: mongo:7
@@ -34,20 +18,6 @@ services:
       timeout: 3s
       retries: 3
 
-  # Redis Commander (Web UI for Redis)
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    container_name: earnfrom-redis-commander
-    ports:
-      - "8081:8081"
-    environment:
-      - REDIS_HOSTS=local:redis:6379
-    depends_on:
-      - redis
-    restart: unless-stopped
-
 volumes:
-  redis-data:
-    driver: local
   mongodb-data:
     driver: local

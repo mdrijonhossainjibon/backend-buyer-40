@@ -13,6 +13,7 @@ import walletRouter from 'routes/wallet/route';
 import mysteryBoxRouter from 'routes/mystery-box/route';
 import converterRouter from 'routes/converter/route';
 import cryptoCoinsRouter from 'routes/crypto-coins/route';
+import adminWalletRouter from 'routes/admin-wallet/route';
 
 const router = Router();
  
@@ -51,6 +52,9 @@ router.use('/v1/admin', adminRouter);
 
 // Mount crypto coins routes
 router.use('/v1', cryptoCoinsRouter);
+
+// Mount admin wallet routes
+router.use('/v1/admin-wallet', adminWalletRouter);
 
  
 export default router;

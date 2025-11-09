@@ -1,16 +1,9 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
-import {
- 
-  publishToRedis,
-} from '../../config/redis';
-import { ErrorResponse } from './types';
+
 import { generateBlockchainTxHash } from './utils';
 import Wallet, { IWallet } from '../../models/Wallet';
 import Swap, { ISwap } from '../../models/Swap';
 import User from '../../models/User';
-
-// Redis channel for swap events
-const REDIS_CHANNEL_SWAP = 'swap:events';
 
 /**
  * Swap Controller
@@ -55,23 +48,13 @@ export class SwapController {
     console.log(`📊 Connected sockets: ${this.io?.sockets.sockets.size || 0}`);
 
     if (this.io) {
+      // Emit to all sockets and to user-specific room
       this.io.emit('SWAP_INITIATED', eventPayload);
+      this.io.to(`user:${userId}`).emit('SWAP_INITIATED', eventPayload);
       console.log(`✅ SWAP_INITIATED event emitted successfully`);
     } else {
       console.error('❌ Socket.IO instance not initialized');
     }
-
-    // Also publish to Redis for multi-server support
-    await publishToRedis(REDIS_CHANNEL_SWAP, {
-      userId,
-      swapId,
-      status: 'initiated',
-      fromToken,
-      toToken,
-      fromAmount,
-      toAmount,
-      timestamp: new Date(),
-    });
   }
 
   /**
@@ -99,10 +82,7 @@ export class SwapController {
       timestamp: new Date(),
     };
 
-    // Publish to Redis for multi-server support
-    await publishToRedis(REDIS_CHANNEL_SWAP, eventData);
-
-    // Also broadcast to local subscribers
+    // Broadcast to local subscribers using Socket.IO
     await this.broadcastSwapStatusLocal(eventData);
   }
 
@@ -186,9 +166,10 @@ export class SwapController {
     console.log(`🔄 Broadcasting ${eventType} for swap ${swapId} to user ${userId}`);
     console.log(`📊 Connected sockets: ${this.io?.sockets.sockets.size || 0}`);
 
-    // Emit to all connected clients (broadcast to all sockets)
+    // Emit to all connected clients and to user-specific room
     if (this.io) {
       this.io.emit(eventType, eventPayload);
+      this.io.to(`user:${userId}`).emit(eventType, eventPayload);
       console.log(`✅ Event ${eventType} emitted successfully`);
     } else {
       console.error('❌ Socket.IO instance not initialized');

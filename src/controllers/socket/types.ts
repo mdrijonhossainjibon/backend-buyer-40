@@ -1,111 +1,38 @@
-// Message type definitions for socket communication
+// Socket event response types
 
-export interface WithdrawalData {
-  withdrawalId: string;
-  coinId: string;
-  coinSymbol: string;
-  network: string;
-  address: string;
-  amount: string;
-}
-
-export interface InitiateWithdrawalMessage {
-  type: 'INITIATE_WITHDRAWAL';
-  data: WithdrawalData;
-}
-
-export interface WithdrawalInitiatedResponse {
-  type: 'WITHDRAWAL_INITIATED';
-  transactionId: string;
-  withdrawalId: string;
-  status: 'initiated';
-}
-
-export interface WithdrawalProcessingResponse {
-  type: 'WITHDRAWAL_PROCESSING';
-  transactionId: string;
-  status: 'processing';
-  confirmations?: number;
-}
-
-export interface WithdrawalPendingResponse {
-  type: 'WITHDRAWAL_PENDING';
-  transactionId: string;
-  confirmations: number;
-  requiredConfirmations: number;
-}
-
-export interface WithdrawalSuccessResponse {
-  type: 'WITHDRAWAL_SUCCESS';
-  transactionId: string;
-  withdrawalId: string;
-  status: 'completed';
-  blockchainTxHash: string;
-}
-
-export interface WithdrawalFailedResponse {
-  type: 'WITHDRAWAL_FAILED';
-  withdrawalId: string;
-  error: string;
-  status: 'failed';
-}
-
+/**
+ * Response sent when a client successfully connects
+ */
 export interface ConnectedResponse {
   type: 'CONNECTED';
   clientId: string;
   message: string;
 }
 
-export interface ErrorResponse {
-  type: 'ERROR';
-  error: string;
+/**
+ * Generic socket response structure
+ */
+export interface SocketResponse<T = any> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  error?: string;
 }
 
-export interface SubscribeBalanceMessage {
-  type: 'SUBSCRIBE_BALANCE';
-  userId: number;
-}
-
-export interface UnsubscribeBalanceMessage {
-  type: 'UNSUBSCRIBE_BALANCE';
-  userId: number;
-}
-
-export interface BalanceChangeResponse {
-  type: 'BALANCE_CHANGED';
-  userId: number;
-  balanceTK: number;
-  totalEarned: number;
-  withdrawnAmount: number;
-  changeAmount: number;
-  changeType: 'earned' | 'withdrawn' | 'bonus' | 'refund';
+/**
+ * Balance update event payload
+ */
+export interface BalanceUpdatePayload {
+  type: 'user:balance:update';
+  userId: string;
+  usdt: number;
   timestamp: Date;
 }
 
-export interface BalanceSubscribedResponse {
-  type: 'BALANCE_SUBSCRIBED';
-  userId: number;
-  currentBalance: number;
-  message: string;
-}
-
-export interface BalanceUnsubscribedResponse {
-  type: 'BALANCE_UNSUBSCRIBED';
-  userId: number;
-  message: string;
-}
-
-export interface BalanceSimulationSuccessResponse {
-  type: 'BALANCE_SIMULATION_SUCCESS';
-  userId: number;
-  changeAmount: number;
-  changeType: 'earned' | 'withdrawn' | 'bonus' | 'refund';
-  newBalance: number;
-  message: string;
-}
-
-export interface SimulateBalanceChangeMessage {
-  userId: number;
-  changeAmount: number;
-  changeType: 'earned' | 'withdrawn' | 'bonus' | 'refund';
+/**
+ * XP update event payload
+ */
+export interface XPUpdatePayload {
+  userId: string;
+  xp: number;
 }

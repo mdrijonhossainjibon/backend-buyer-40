@@ -22,8 +22,7 @@ export class ConverterSocketController {
    * Handle converter:convert event
    */
   async handleConvert(socket: Socket, data: any) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    
 
     try {
       const { userId, fromCurrency, toCurrency, amount } = data;
@@ -64,7 +63,7 @@ export class ConverterSocketController {
         from: fromCurrency,
         to: toCurrency,
         isActive: true,
-      }).session(session);
+      })
 
       if (!conversionRate) {
         throw new Error(`Conversion rate not found for ${fromCurrency} to ${toCurrency}`);
@@ -89,7 +88,7 @@ export class ConverterSocketController {
       }
 
       // Get user wallet
-      const wallet = await Wallet.findOne({ userId }).session(session);
+      const wallet = await Wallet.findOne({ userId })
 
       if (!wallet) {
         throw new Error('Wallet not found');
@@ -122,7 +121,7 @@ export class ConverterSocketController {
       wallet.totalEarned[toCurrency as 'xp' | 'usdt'] += toAmount;
       wallet.lastTransaction = new Date();
 
-      await wallet.save({ session });
+      await wallet.save();
 
       // Create conversion history record
       const conversion = await ConversionHistory.create(
@@ -138,7 +137,7 @@ export class ConverterSocketController {
             status: 'completed',
           },
         ],
-        { session }
+       
       );
 
       // Step 4: Finalizing
@@ -150,10 +149,8 @@ export class ConverterSocketController {
 
       await this.delay(3000); // 3 seconds delay
 
-      // Commit transaction
-      await session.commitTransaction();
-      session.endSession();
-
+     
+      
       console.log(`✅ Conversion successful for user ${userId}`);
 
       // Emit success event to the user
@@ -185,9 +182,8 @@ export class ConverterSocketController {
       });
 
     } catch (error: any) {
-      await session.abortTransaction();
-      session.endSession();
-
+ 
+    
       console.error('❌ Error converting currency:', error.message);
 
       // Emit failure event

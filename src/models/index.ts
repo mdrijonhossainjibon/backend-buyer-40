@@ -15,6 +15,7 @@ export { default as UserMysteryBox, MysteryBoxSettings } from './MysteryBox';
 export { default as ConversionRate } from './ConversionRate';
 export { default as ConversionHistory } from './ConversionHistory';
 export { default as CryptoCoin } from './CryptoCoin';
+export { default as AdminWallet } from './AdminWallet';
 
 // Export types
 export type { IUser } from './User';
@@ -25,3 +26,4 @@ export type { IUserMysteryBox, IMysteryBoxSettings } from './MysteryBox';
 export type { IConversionRate } from './ConversionRate';
 export type { IConversionHistory } from './ConversionHistory';
 export type { ICryptoCoin, INetwork } from './CryptoCoin';
+export type { IAdminWallet, IDepositAddress } from './AdminWallet';

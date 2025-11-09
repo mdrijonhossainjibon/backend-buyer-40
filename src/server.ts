@@ -11,7 +11,6 @@ import connectDB from './config/database';
 import apiRoutes from './routes/v1';
 import { initializeSocketIO } from './config/socket';
 import { initializeSocket } from './services/socket';
-import { initializeRedis } from './config/redis';
 import { socketAuthMiddleware } from './middlewares/socketAuth';
 import 'services/telegram';
 
@@ -27,15 +26,6 @@ const PORT = process.env.PORT || 5000;
 
 // Create HTTP server
 const httpServer = createServer(app);
-
-// Initialize Redis
-initializeRedis()
-  .then(() => {
-    console.log('✅ Redis initialized successfully');
-  })
-  .catch((error) => {
-    console.error('⚠️ Redis initialization failed. Running without Redis support:', error.message);
-  });
 
 // Initialize Socket.IO
 const io = initializeSocketIO(httpServer);
