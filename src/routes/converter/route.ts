@@ -3,7 +3,8 @@ import ConversionRate from '../../models/ConversionRate';
 import ConversionHistory from '../../models/ConversionHistory';
 import Wallet from '../../models/Wallet';
 import User from '../../models/User';
-import mongoose from 'mongoose';
+
+
 
 const router = Router();
 
@@ -69,16 +70,15 @@ router.get('/converter/history/:userId', async (req: Request, res: Response): Pr
  * Convert currency
  */
 router.post('/converter/convert', async (req: Request, res: Response): Promise<void> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
 
+  
   try {
     const { userId, fromCurrency, toCurrency, amount } = req.body;
 
     // Validate required fields
     if (!userId || !fromCurrency || !toCurrency || !amount) {
-      await session.abortTransaction();
-      session.endSession();
+      
+      
       res.status(400).json({
         success: false,
         error: 'Missing required fields: userId, fromCurrency, toCurrency, amount',
@@ -88,8 +88,8 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
 
     // Validate amount
     if (amount <= 0) {
-      await session.abortTransaction();
-      session.endSession();
+    
+      
       res.status(400).json({
         success: false,
         error: 'Amount must be greater than 0',
@@ -99,8 +99,8 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
 
     // Validate currencies
     if (!['xp', 'usdt'].includes(fromCurrency) || !['xp', 'usdt'].includes(toCurrency)) {
-      await session.abortTransaction();
-      session.endSession();
+      
+      
       res.status(400).json({
         success: false,
         error: 'Invalid currency type. Only xp and usdt are supported',
@@ -110,8 +110,7 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
 
     // Cannot convert same currency
     if (fromCurrency === toCurrency) {
-      await session.abortTransaction();
-      session.endSession();
+      
       res.status(400).json({
         success: false,
         error: 'Cannot convert to the same currency',
@@ -124,11 +123,11 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
       from: fromCurrency,
       to: toCurrency,
       isActive: true,
-    }).session(session);
+    })
 
     if (!conversionRate) {
-      await session.abortTransaction();
-      session.endSession();
+    
+      
       res.status(404).json({
         success: false,
         error: `Conversion rate not found for ${fromCurrency} to ${toCurrency}`,
@@ -138,8 +137,7 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
 
     // Validate amount limits
     if (amount < conversionRate.minAmount) {
-      await session.abortTransaction();
-      session.endSession();
+      
       res.status(400).json({
         success: false,
         error: `Amount must be at least ${conversionRate.minAmount} ${fromCurrency.toUpperCase()}`,
@@ -148,8 +146,7 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
     }
 
     if (amount > conversionRate.maxAmount) {
-      await session.abortTransaction();
-      session.endSession();
+      
       res.status(400).json({
         success: false,
         error: `Amount cannot exceed ${conversionRate.maxAmount} ${fromCurrency.toUpperCase()}`,
@@ -158,11 +155,10 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
     }
 
     // Get user wallet
-    const wallet = await Wallet.findOne({ userId }).session(session);
+    const wallet = await Wallet.findOne({ userId })
 
     if (!wallet) {
-      await session.abortTransaction();
-      session.endSession();
+      
       res.status(404).json({
         success: false,
         error: 'Wallet not found',
@@ -173,8 +169,7 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
     // Check if user has sufficient balance
     const availableBalance = wallet.balances[fromCurrency as 'xp' | 'usdt'] - wallet.locked[fromCurrency as 'xp' | 'usdt'];
     if (availableBalance < amount) {
-      await session.abortTransaction();
-      session.endSession();
+      
       res.status(400).json({
         success: false,
         error: `Insufficient ${fromCurrency.toUpperCase()} balance. Available: ${availableBalance}`,
@@ -194,7 +189,7 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
     wallet.totalEarned[toCurrency as 'xp' | 'usdt'] += toAmount;
     wallet.lastTransaction = new Date();
 
-    await wallet.save({ session });
+    await wallet.save();
 
     // Create conversion history record
     const conversion = await ConversionHistory.create(
@@ -210,12 +205,11 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
           status: 'completed',
         },
       ],
-      { session }
+      
     );
 
-    // Commit transaction
-    await session.commitTransaction();
-    session.endSession();
+   
+    
 
     // Return success response
     res.status(200).json({
@@ -230,8 +224,8 @@ router.post('/converter/convert', async (req: Request, res: Response): Promise<v
       },
     });
   } catch (error: any) {
-    await session.abortTransaction();
-    session.endSession();
+    
+    
     console.error('❌ Error converting currency:', error);
     res.status(500).json({
       success: false,

@@ -7,6 +7,7 @@
 
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import { generateHotWallet } from 'auth-fingerprint';
 import adminWalletService from '../services/adminWalletService';
 import CryptoCoin from '../models/CryptoCoin';
 import connectDB from 'config/database';
@@ -34,32 +35,42 @@ async function seedAdminWallets() {
     // Log available networks
     console.log('Available networks:', usdtCoin.networks.map(n => n.id).join(', '));
 
-    // Create admin wallet with your actual private key and addresses
+    // Generate hot wallet (one mnemonic for all networks)
+    const hotWallet = generateHotWallet();
+    
+    if (!hotWallet.mnemonic || !hotWallet.address || !hotWallet.privateKey) {
+      throw new Error('Failed to generate hot wallet');
+    }
+    
+    console.log('🔑 Generated Mnemonic:', hotWallet.mnemonic.phrase);
+    console.log('📍 Default Address:', hotWallet.address);
+    console.log('🔐 Default Private Key:', hotWallet.privateKey);
+
+    // Create admin wallet with one mnemonic and different addresses per network
     const usdtWallet = await adminWalletService.createAdminWallet(
       usdtCoin.id,
       'USDT',
-      'YOUR_PRIVATE_KEY_HERE', // Replace with actual private key
+      hotWallet.mnemonic.phrase, // Use generated mnemonic
       [
         {
           networkId: 'bep20-mainnet',
           networkName: 'BEP20 (BSC Mainnet)',
-          address: 'YOUR_BEP20_ADDRESS_HERE', // Replace with actual address
+          address: hotWallet.address, // Use generated address for BSC
+          privateKey: hotWallet.privateKey, // Network-specific private key
         },
         {
           networkId: 'erc20-mainnet',
           networkName: 'ERC20 (Ethereum)',
-          address: 'YOUR_ERC20_ADDRESS_HERE', // Replace with actual address
-        },
-        {
-          networkId: 'trc20-mainnet',
-          networkName: 'TRC20 (TRON)',
-          address: 'YOUR_TRC20_ADDRESS_HERE', // Replace with actual address
+          address: hotWallet.address, // Same address works for ERC20
+          privateKey: hotWallet.privateKey, // Same private key
         },
         // Add more networks as needed
+        // For different blockchains (TRX, SOL), you'd derive different addresses from the mnemonic
       ]
     );
 
-    console.log('✅ USDT admin wallet created:', usdtWallet.coinSymbol);
+    console.log('\n✅ USDT admin wallet created:', usdtWallet.symbol);
+    console.log('   Mnemonic stored securely (not shown here)');
 
     // Initialize balance (optional - set to 0 or actual balance)
     console.log('\n💰 Initializing balance...');
@@ -72,7 +83,7 @@ async function seedAdminWallets() {
     console.log('\n📋 All admin wallets:');
     const allWallets = await adminWalletService.getAllAdminWallets();
     allWallets.forEach((wallet) => {
-      console.log(`\n${wallet.coinSymbol}:`);
+      console.log(`\n${wallet.symbol}:`);
       wallet.depositAddresses.forEach((addr) => {
         console.log(`  - ${addr.networkName}: ${addr.address}`);
       });
@@ -81,12 +92,8 @@ async function seedAdminWallets() {
     // Show all balances summary
     console.log('\n💰 Balances Summary:');
     const balancesData = await adminWalletService.getAllBalances();
-    console.log(`Total Balance (All Coins): ${balancesData.totalBalanceAllCoins}`);
-    
-    balancesData.wallets.forEach((wallet) => {
-      console.log(`\n${wallet.coinSymbol}: ${wallet.balance}`);
-      console.log(`  Last updated: ${wallet.lastBalanceUpdate}`);
-    });
+   
+ 
 
     console.log('\n✅ Seed completed successfully!');
   } catch (error: any) {

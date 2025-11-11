@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import adminWalletService from '../../services/adminWalletService';
 import CryptoCoin from '../../models/CryptoCoin';
+import { generateHotWallet }   from 'auth-fingerprint';
+import { AdminWallet } from 'models';
  
 
 const router = Router();
@@ -40,10 +43,63 @@ router.get('/deposit-address/:symbol/:networkId', async (req: Request, res: Resp
     }
 
     // Get deposit address
-    const depositAddress = await adminWalletService.getDepositAddress(
+    let depositAddress = await adminWalletService.getDepositAddress(
       symbol,
       networkId
     );
+
+    // Auto-create deposit address if not configured
+    if (!depositAddress) {
+      try {
+        // Generate hot wallet for this network
+        const hotWallet = generateHotWallet();
+        
+        if (!hotWallet.mnemonic || !hotWallet.address || !hotWallet.privateKey) {
+          throw new Error('Failed to generate hot wallet');
+        }
+        
+        // Get or create admin wallet
+        const existingWallet = await AdminWallet.findOne({ symbol: symbol.toUpperCase() });
+        
+        if (!existingWallet) {
+          // Create new admin wallet with mnemonic
+          await adminWalletService.createAdminWallet(
+            (coin._id as mongoose.Types.ObjectId).toString(),
+            symbol.toUpperCase(),
+            hotWallet.mnemonic.phrase,
+            [{
+              networkId: networkId,
+              networkName: network.name,
+              address: hotWallet.address,
+              privateKey: hotWallet.privateKey,
+            }]
+          );
+        } else {
+          // Add deposit address to existing wallet
+          await adminWalletService.addOrUpdateDepositAddress(
+            symbol.toUpperCase(),
+            networkId,
+            hotWallet.address,
+            hotWallet.privateKey,
+            undefined
+          );
+        }
+        
+        // Fetch the newly created deposit address
+        depositAddress = await adminWalletService.getDepositAddress(
+          symbol,
+          networkId
+        );
+        
+        console.log(`✅ Auto-created deposit address for ${symbol} on ${networkId}`);
+      } catch (createError: any) {
+        console.error('❌ Error auto-creating deposit address:', createError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to create deposit address automatically',
+        });
+      }
+    }
 
     if (!depositAddress) {
       return res.status(404).json({
@@ -114,7 +170,9 @@ router.get('/deposit-info/:symbol', async (req: Request, res: Response) => {
     const networks = coin.networks
       .filter((network) => network.isActive)
       .map((network) => {
-        const depositAddr = adminWallet.getDepositAddress(network.id);
+        const depositAddr = adminWallet.depositAddresses.find(
+          (addr) => addr.networkId === network.id
+        );
         return {
           id: network.id,
           name: network.name,
@@ -184,7 +242,7 @@ router.post('/admin/create', async (req: Request, res: Response) => {
       success: true,
       data: {
         coinId: adminWallet.coinId,
-        symbol: adminWallet.coinSymbol,
+        symbol: adminWallet.symbol,
         depositAddresses: adminWallet.depositAddresses,
         isActive: adminWallet.isActive,
       },
@@ -206,13 +264,13 @@ router.post('/admin/create', async (req: Request, res: Response) => {
  */
 router.put('/admin/deposit-address', async (req: Request, res: Response) => {
   try {
-    const { symbol, networkId, address, memo } = req.body;
+    const { symbol, networkId, address, privateKey, memo } = req.body;
 
     // Validate required fields
-    if (!symbol || !networkId || !address) {
+    if (!symbol || !networkId || !address || !privateKey) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: symbol, networkId, address',
+        message: 'Missing required fields: symbol, networkId, address, privateKey',
       });
     }
 
@@ -221,6 +279,7 @@ router.put('/admin/deposit-address', async (req: Request, res: Response) => {
       symbol,
       networkId,
       address,
+      privateKey,
       memo
     );
 
@@ -234,7 +293,7 @@ router.put('/admin/deposit-address', async (req: Request, res: Response) => {
     return res.json({
       success: true,
       data: {
-        symbol: adminWallet.coinSymbol,
+        symbol: adminWallet.symbol,
         depositAddresses: adminWallet.depositAddresses,
       },
       message: 'Deposit address updated successfully',
@@ -259,7 +318,7 @@ router.get('/admin/list', async (req: Request, res: Response) => {
 
     const formattedWallets = wallets.map((wallet) => ({
       coinId: wallet.coinId,
-      coinSymbol: wallet.coinSymbol,
+      symbol: wallet.symbol,
       depositAddresses: wallet.depositAddresses,
       isActive: wallet.isActive,
       createdAt: wallet.createdAt,
@@ -302,7 +361,7 @@ router.get('/admin/:symbol', async (req: Request, res: Response) => {
       success: true,
       data: {
         coinId: wallet.coinId,
-        coinSymbol: wallet.coinSymbol,
+        symbol: wallet.symbol,
         depositAddresses: wallet.depositAddresses,
         isActive: wallet.isActive,
         createdAt: wallet.createdAt,
@@ -350,52 +409,7 @@ router.delete('/admin/:symbol', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/v1/admin-wallet/admin/decrypt-key
- * Get decrypted private key (DANGEROUS - use with extreme caution!)
- * Admin only endpoint with additional security
- */
-router.post('/admin/decrypt-key', async (req: Request, res: Response) => {
-  try {
-    const { symbol, confirmationCode } = req.body;
-
-    // Add additional security check
-    // In production, you should verify admin authentication and require 2FA
-    if (confirmationCode !== process.env.ADMIN_MASTER_CODE) {
-      return res.status(403).json({
-        success: false,
-        message: 'Invalid confirmation code',
-      });
-    }
-
-    if (!symbol) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required field: symbol',
-      });
-    }
-
-    const privateKey = await adminWalletService.getPrivateKey(symbol);
-
-    // Log this action for security audit
-    console.warn(`⚠️ SECURITY ALERT: Private key decrypted for ${symbol}`);
-
-    return res.json({
-      success: true,
-      data: {
-        symbol: symbol.toUpperCase(),
-        privateKey,
-      },
-      message: 'Private key decrypted successfully',
-    });
-  } catch (error: any) {
-    console.error('❌ Error decrypting private key:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Internal server error',
-    });
-  }
-});
+ 
 
 /**
  * PUT /api/v1/admin-wallet/admin/balance
@@ -438,7 +452,7 @@ router.put('/admin/balance', async (req: Request, res: Response) => {
     return res.json({
       success: true,
       data: {
-        coinSymbol: wallet.coinSymbol,
+        symbol: wallet.symbol,
         balance: wallet.balance,
         lastBalanceUpdate: wallet.lastBalanceUpdate,
       },

@@ -14,6 +14,7 @@ export const socketAuthMiddleware = async (  socket: Socket,  next: (err?: Exten
   try {
     
    const { userId, token }= socket.handshake.auth;
+   
     // Verify user exists in database
     const user = await User.findOne({ userId });
 

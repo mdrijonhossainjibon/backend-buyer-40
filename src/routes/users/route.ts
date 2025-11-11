@@ -15,6 +15,8 @@ router.post('/users', async (req: Request, res: Response) => {
     const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY  || 'app';
 
     const result = verifySignature({ timestamp, signature, hash }, secretKey);
+
+    console.log(result , secretKey)
     if (!result.success) {
       return res.status(401).json({ success: false, message: 'Invalid signature or request expired' });
     }

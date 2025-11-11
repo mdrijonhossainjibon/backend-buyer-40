@@ -127,7 +127,7 @@ httpServer.listen(PORT, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   
   // Start cron jobs
-  userActivityReminderJob.start();
+  ///userActivityReminderJob.start();
   console.log('⏰ Cron jobs initialized');
 });
 

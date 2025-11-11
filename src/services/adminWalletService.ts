@@ -1,350 +1,221 @@
+import crypto from 'crypto';
+import { generateHotWallet , getAddressFromPrivateKey  }   from 'auth-fingerprint';
 import AdminWallet, { IAdminWallet, IDepositAddress } from '../models/AdminWallet';
-import CryptoCoin, { ICryptoCoin } from '../models/CryptoCoin';
+ 
 
 /**
  * Admin Wallet Service
- * Manages admin wallets, private keys, and deposit addresses
+ * Handles all business logic for admin wallet operations
  */
-export class AdminWalletService {
-  private encryptionKey: string;
-
-  constructor() {
-    // Get encryption key from environment variable
-    this.encryptionKey = process.env.WALLET_ENCRYPTION_KEY || '';
-    
-    if (!this.encryptionKey) {
-      console.warn('⚠️ WALLET_ENCRYPTION_KEY not set in environment variables');
-    }
-  }
-
+class AdminWalletService {
+ 
+ 
+ 
   /**
-   * Create a new admin wallet with encrypted private key
-   * @param coinId - CryptoCoin ID
-   * @param coinSymbol - Coin symbol (e.g., 'USDT', 'BTC')
-   * @param privateKey - Plain text private key
-   * @param depositAddresses - Array of deposit addresses for different networks
-   * @returns Created admin wallet
+   * Create a new admin wallet with one mnemonic for all networks
    */
   async createAdminWallet(
     coinId: string,
-    coinSymbol: string,
-    privateKey: string,
-    depositAddresses: Omit<IDepositAddress, 'createdAt'>[]
+    symbol: string,
+    mnemonic: string | null,
+    depositAddresses: Array<{
+      networkId: string;
+      networkName: string;
+      address: string;
+      privateKey: string;
+      memo?: string;
+    }>
   ): Promise<IAdminWallet> {
-    try {
-      // Verify coin exists
-      const coin = await CryptoCoin.findOne({ id: coinId });
-      if (!coin) {
-        throw new Error(`Coin with ID ${coinId} not found`);
-      }
-
-      // Validate that all network IDs exist in the coin's networks
-      const validNetworkIds = coin.networks.map((network) => network.id);
-      for (const addr of depositAddresses) {
-        if (!validNetworkIds.includes(addr.networkId)) {
-          throw new Error(
-            `Network ID ${addr.networkId} not found in coin ${coinSymbol}`
-          );
-        }
-      }
-
-      // Encrypt private key
-      const encryptedPrivateKey = (AdminWallet as any).encryptPrivateKey(
-        privateKey,
-        this.encryptionKey
-      );
-
-      // Create admin wallet
-      const adminWallet = await AdminWallet.create({
-        coinId,
-        coinSymbol: coinSymbol.toUpperCase(),
-        encryptedPrivateKey,
-        depositAddresses: depositAddresses.map((addr) => ({
-          ...addr,
-          createdAt: new Date(),
-        })),
-        isActive: true,
-      });
-
-      console.log(`✅ Admin wallet created for ${coinSymbol}`);
-      return adminWallet;
-    } catch (error: any) {
-      console.error('❌ Error creating admin wallet:', error.message);
-      throw error;
+    // Check if wallet already exists
+    const existingWallet = await AdminWallet.findOne({ symbol: symbol.toUpperCase() });
+    if (existingWallet) {
+      throw new Error(`Admin wallet for ${symbol} already exists`);
     }
+
+    // Generate hot wallet or use provided mnemonic
+    let walletMnemonic: string;
+    
+    if (mnemonic) {
+      // Use provided mnemonic
+      walletMnemonic = mnemonic;
+    } else {
+      // Generate new hot wallet
+      const hotWallet = generateHotWallet();
+      
+      if (!hotWallet.mnemonic) {
+        throw new Error('Failed to generate hot wallet mnemonic');
+      }
+      
+      walletMnemonic = hotWallet.mnemonic.phrase;
+    }
+  
+    // Create wallet
+    const wallet = new AdminWallet({
+      coinId,
+      symbol: symbol.toUpperCase(),
+      mnemonic: walletMnemonic,
+      depositAddresses: depositAddresses.map((addr) => ({
+        ...addr,
+        createdAt: new Date(),
+      })),
+      balance: 0,
+      lastBalanceUpdate: new Date(),
+      isActive: true,
+    });
+
+    await wallet.save();
+    return wallet;
   }
 
   /**
-   * Get admin wallet by coin symbol
-   * @param coinSymbol - Coin symbol (e.g., 'USDT', 'BTC')
-   * @returns Admin wallet or null
+   * Get admin wallet by symbol
    */
-  async getAdminWallet(coinSymbol: string): Promise<IAdminWallet | null> {
-    try {
-      const wallet = await AdminWallet.findOne({
-        coinSymbol: coinSymbol.toUpperCase(),
-        isActive: true,
-      });
-      return wallet;
-    } catch (error: any) {
-      console.error('❌ Error getting admin wallet:', error.message);
-      throw error;
-    }
+  async getAdminWallet(symbol: string): Promise<IAdminWallet | null> {
+    return await AdminWallet.findOne({
+      symbol: symbol.toUpperCase(),
+      isActive: true,
+    });
   }
 
   /**
-   * Get deposit address for a specific coin and network
-   * @param coinSymbol - Coin symbol (e.g., 'USDT', 'BTC')
-   * @param networkId - Network ID (e.g., 'trc20', 'erc20')
-   * @returns Deposit address or null
+   * Get all admin wallets
+   */
+  async getAllAdminWallets(): Promise<IAdminWallet[]> {
+    return await AdminWallet.find({ isActive: true });
+  }
+
+  /**
+   * Get deposit address for a specific network
    */
   async getDepositAddress(
-    coinSymbol: string,
+    symbol: string,
     networkId: string
   ): Promise<IDepositAddress | null> {
-    try {
-      const wallet = await this.getAdminWallet(coinSymbol);
-      if (!wallet) {
-        console.warn(`⚠️ No admin wallet found for ${coinSymbol}`);
-        return null;
-      }
-
-      const depositAddress = wallet.getDepositAddress(networkId);
-      if (!depositAddress) {
-        console.warn(
-          `⚠️ No deposit address found for ${coinSymbol} on network ${networkId}`
-        );
-        return null;
-      }
-
-      return depositAddress;
-    } catch (error: any) {
-      console.error('❌ Error getting deposit address:', error.message);
-      throw error;
+    const wallet = await this.getAdminWallet(symbol);
+    if (!wallet) {
+      return null;
     }
+
+    const depositAddress = wallet.depositAddresses.find(
+      (addr) => addr.networkId === networkId
+    );
+
+    return depositAddress || null;
   }
 
   /**
    * Add or update deposit address for a network
-   * @param coinSymbol - Coin symbol
-   * @param networkId - Network ID
-   * @param address - Deposit address
-   * @param memo - Optional memo for networks that require it
-   * @returns Updated admin wallet
    */
   async addOrUpdateDepositAddress(
-    coinSymbol: string,
+    symbol: string,
     networkId: string,
     address: string,
+    privateKey: string,
     memo?: string
   ): Promise<IAdminWallet | null> {
-    try {
-      const wallet = await this.getAdminWallet(coinSymbol);
-      if (!wallet) {
-        throw new Error(`No admin wallet found for ${coinSymbol}`);
-      }
+    const wallet = await AdminWallet.findOne({
+      symbol: symbol.toUpperCase(),
+      isActive: true,
+    });
 
-      // Get coin to validate network and get network name
-      const coin = await CryptoCoin.findOne({ id: wallet.coinId });
-      if (!coin) {
-        throw new Error(`Coin not found for ${coinSymbol}`);
-      }
-
-      const network = coin.networks.find((net) => net.id === networkId);
-      if (!network) {
-        throw new Error(`Network ${networkId} not found for ${coinSymbol}`);
-      }
-
-      // Check if address already exists for this network
-      const existingIndex = wallet.depositAddresses.findIndex(
-        (addr) => addr.networkId === networkId
-      );
-
-      if (existingIndex >= 0) {
-        // Update existing address
-        wallet.depositAddresses[existingIndex].address = address;
-        if (memo !== undefined) {
-          wallet.depositAddresses[existingIndex].memo = memo;
-        }
-      } else {
-        // Add new address
-        wallet.depositAddresses.push({
-          networkId,
-          networkName: network.name,
-          address,
-          memo,
-          createdAt: new Date(),
-        });
-      }
-
-      await wallet.save();
-      console.log(
-        `✅ Deposit address ${existingIndex >= 0 ? 'updated' : 'added'} for ${coinSymbol} on ${network.name}`
-      );
-      return wallet;
-    } catch (error: any) {
-      console.error('❌ Error adding/updating deposit address:', error.message);
-      throw error;
+    if (!wallet) {
+      return null;
     }
-  }
 
-  /**
-   * Get decrypted private key (use with caution!)
-   * @param coinSymbol - Coin symbol
-   * @returns Decrypted private key
-   */
-  async getPrivateKey(coinSymbol: string): Promise<string> {
-    try {
-      // Explicitly select the encrypted private key field
-      const wallet = await AdminWallet.findOne({
-        coinSymbol: coinSymbol.toUpperCase(),
-        isActive: true,
-      }).select('+encryptedPrivateKey');
+    // Check if address already exists for this network
+    const existingIndex = wallet.depositAddresses.findIndex(
+      (addr) => addr.networkId === networkId
+    );
 
-      if (!wallet) {
-        throw new Error(`No admin wallet found for ${coinSymbol}`);
+    if (existingIndex !== -1) {
+      // Update existing address
+      wallet.depositAddresses[existingIndex].address = address;
+      wallet.depositAddresses[existingIndex].privateKey = privateKey;
+      if (memo !== undefined) {
+        wallet.depositAddresses[existingIndex].memo = memo;
       }
-
-      const privateKey = wallet.decryptPrivateKey(this.encryptionKey);
-      return privateKey;
-    } catch (error: any) {
-      console.error('❌ Error getting private key:', error.message);
-      throw error;
-    }
-  }
-
-  /**
-   * Get all active admin wallets
-   * @returns Array of admin wallets
-   */
-  async getAllAdminWallets(): Promise<IAdminWallet[]> {
-    try {
-      // Don't populate coinId since it's a string field, not a reference
-      const wallets = await AdminWallet.find({ isActive: true });
-      return wallets;
-    } catch (error: any) {
-      console.error('❌ Error getting all admin wallets:', error.message);
-      throw error;
-    }
-  }
-
-  /**
-   * Get all balances across all coins
-   * @returns Summary of all balances
-   */
-  async getAllBalances(): Promise<{
-    totalBalanceAllCoins: number;
-    wallets: Array<{
-      coinSymbol: string;
-      coinId: string;
-      balance: number;
-      lastBalanceUpdate: Date;
-    }>;
-  }> {
-    try {
-      const wallets = await AdminWallet.find({ isActive: true });
-
-      let totalBalanceAllCoins = 0;
-
-      const walletsData = wallets.map((wallet) => {
-        totalBalanceAllCoins += wallet.balance || 0;
-
-        return {
-          coinSymbol: wallet.coinSymbol,
-          coinId: wallet.coinId,
-          balance: wallet.balance || 0,
-          lastBalanceUpdate: wallet.lastBalanceUpdate,
-        };
+    } else {
+      // Add new address
+      wallet.depositAddresses.push({
+        networkId,
+        networkName: networkId, // You might want to fetch the actual network name
+        address,
+        privateKey,
+        memo,
+        createdAt: new Date(),
       });
-
-      return {
-        totalBalanceAllCoins,
-        wallets: walletsData,
-      };
-    } catch (error: any) {
-      console.error('❌ Error getting all balances:', error.message);
-      throw error;
     }
+
+    await wallet.save();
+    return wallet;
+  }
+
+  
+
+  /**
+   * Deactivate wallet
+   */
+  async deactivateWallet(symbol: string): Promise<IAdminWallet | null> {
+    const wallet = await AdminWallet.findOneAndUpdate(
+      { symbol: symbol.toUpperCase() },
+      { isActive: false },
+      { new: true }
+    );
+
+    return wallet;
   }
 
   /**
    * Update balance for a coin
-   * @param coinSymbol - Coin symbol
-   * @param balance - New balance amount
-   * @returns Updated wallet
    */
-  async updateBalance(
-    coinSymbol: string,
-    balance: number
-  ): Promise<IAdminWallet | null> {
-    try {
-      const wallet = await this.getAdminWallet(coinSymbol);
-      if (!wallet) {
-        throw new Error(`No admin wallet found for ${coinSymbol}`);
-      }
+  async updateBalance(symbol: string, balance: number): Promise<IAdminWallet | null> {
+    const wallet = await AdminWallet.findOneAndUpdate(
+      { symbol: symbol.toUpperCase(), isActive: true },
+      {
+        balance,
+        lastBalanceUpdate: new Date(),
+      },
+      { new: true }
+    );
 
-      // Validate balance
-      if (balance < 0) {
-        throw new Error('Balance cannot be negative');
-      }
-
-      // Update balance
-      wallet.balance = balance;
-      await wallet.save();
-
-      console.log(
-        `✅ Balance updated for ${coinSymbol}: ${balance}`
-      );
-      return wallet;
-    } catch (error: any) {
-      console.error('❌ Error updating balance:', error.message);
-      throw error;
-    }
+    return wallet;
   }
 
   /**
    * Get balance for a coin
-   * @param coinSymbol - Coin symbol
-   * @returns Balance or null
    */
-  async getBalance(
-    coinSymbol: string
-  ): Promise<number | null> {
-    try {
-      const wallet = await this.getAdminWallet(coinSymbol);
-      if (!wallet) {
-        return null;
-      }
-
-      return wallet.balance || 0;
-    } catch (error: any) {
-      console.error('❌ Error getting balance:', error.message);
-      throw error;
+  async getBalance(symbol: string): Promise<number | null> {
+    const wallet = await this.getAdminWallet(symbol);
+    if (!wallet) {
+      return null;
     }
+
+    return wallet.balance;
   }
 
   /**
-   * Deactivate an admin wallet
-   * @param coinSymbol - Coin symbol
-   * @returns Updated wallet
+   * Get all balances across all coins
    */
-  async deactivateWallet(coinSymbol: string): Promise<IAdminWallet | null> {
-    try {
-      const wallet = await AdminWallet.findOneAndUpdate(
-        { coinSymbol: coinSymbol.toUpperCase() },
-        { isActive: false },
-        { new: true }
-      );
+  async getAllBalances(): Promise<
+    Array<{
+      symbol: string;
+      coinId: string;
+      balance: number;
+      lastBalanceUpdate: Date;
+      depositAddresses: IDepositAddress[];
+    }>
+  > {
+    const wallets = await this.getAllAdminWallets();
 
-      if (wallet) {
-        console.log(`✅ Admin wallet deactivated for ${coinSymbol}`);
-      }
-      return wallet;
-    } catch (error: any) {
-      console.error('❌ Error deactivating wallet:', error.message);
-      throw error;
-    }
+    return wallets.map((wallet) => ({
+      symbol: wallet.symbol,
+      coinId: wallet.coinId,
+      balance: wallet.balance,
+      lastBalanceUpdate: wallet.lastBalanceUpdate,
+      depositAddresses: wallet.depositAddresses,
+    }));
   }
 }
 
+// Export singleton instance
 export default new AdminWalletService();
