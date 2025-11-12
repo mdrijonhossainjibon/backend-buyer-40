@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { verifySignature } from 'auth-fingerprint'
 import { BotConfig } from 'models/BotConfig'
+import { User } from 'models';
 
  
 
@@ -17,7 +18,12 @@ router.post('/bot_status', async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Invalid signature or request expired' });
     }
 
-    const { userId } = JSON.parse(result.data as string);
+    const {  telegramId } = JSON.parse(result.data as string);
+ 
+   
+     const referralCount = await User.countDocuments({  referredBy :   telegramId  })
+
+ 
 
     // Find bot configuration record
     const botConfig = await BotConfig.findOne({ });
@@ -38,7 +44,8 @@ router.post('/bot_status', async (req: Request, res: Response) => {
       data: {
         botUsername: botConfig.botUsername,
         botStatus: botConfig.Status,
-        botVersion: '1.0.0'
+        botVersion: '1.0.0',
+        referralCount 
       }
     }
 
