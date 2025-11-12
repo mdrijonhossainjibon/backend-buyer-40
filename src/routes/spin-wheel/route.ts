@@ -442,12 +442,9 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
     const now = new Date();
     const lastReset = spinTicket.lastResetDate || now;
     const nextSpinTime = lastReset.getTime() + 24 * 60 * 60 * 1000;
-
-    // Emit socket events for real-time updates
-    const userRoom = `user:${telegramId}`;
-     
+ 
     // Emit XP update
-    io.to(userRoom).emit('user:xp:update', {
+    io.emit('user:xp:update', {
       type: 'user:xp:update',
       userId : telegramId,
       xp: wallet.balances.xp,
@@ -455,7 +452,7 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
     });
 
     // Emit spin result
-    io.to(userRoom).emit('spin:result', {
+    io.emit('spin:result', {
       type: 'spin:result',
       userId : telegramId,
       result: {
