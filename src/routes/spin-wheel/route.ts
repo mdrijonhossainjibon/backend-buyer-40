@@ -651,8 +651,6 @@ router.post('/spin-wheel/spin-with-ticket', async (req: Request, res: Response) 
       spinDate: new Date()
     });
 
-    // Emit socket events for real-time updates
-    const userRoom = `user:${telegramId}`;
     
     // Emit XP update
     io.emit('user:xp:update', {
