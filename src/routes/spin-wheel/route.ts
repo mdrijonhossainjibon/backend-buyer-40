@@ -192,7 +192,7 @@ router.post('/spin-wheel/purchase-ticket', async (req: Request, res: Response) =
     });
   }
 
-  const { telegramId , quantity = 1, ticketPrice = 100  } = JSON.parse(data as string);
+  const { telegramId , quantity = 1  } = JSON.parse(data as string);
   
 
     // Validate input
@@ -223,9 +223,16 @@ router.post('/spin-wheel/purchase-ticket', async (req: Request, res: Response) =
         message: 'Account is suspended'
       });
     }
+    const config = await SpinWheelConfig.findOne();
 
+    if(!config){
+     return res.status(400).json({
+        success: false,
+        message: `plase config fast`
+      });
+    }
     // Calculate total cost
-    const totalCost = quantity * ticketPrice;
+    const totalCost = quantity * config.ticketPrice;
 
     // Get or create wallet
     let wallet = await Wallet.findOne({ userId : telegramId});
@@ -446,27 +453,13 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
     // Emit XP update
     io.emit('user:xp:update', {
       type: 'user:xp:update',
-      userId : telegramId,
+      telegramId,
       xp: wallet.balances.xp,
       timestamp: new Date()
     });
 
-    // Emit spin result
-    io.emit('spin:result', {
-      type: 'spin:result',
-      userId : telegramId,
-      result: {
-        prizeId: winningSegment.id,
-        label: winningSegment.label,
-        amount: winningSegment.value,
-        color: winningSegment.color
-      },
-      freeSpinsUsed: spinTicket.freeSpinsUsed,
-      extraSpinsUnlocked: spinTicket.extraSpinsUnlocked,
-      extraSpinsUsed: spinTicket.extraSpinsUsed,
-      extraSpinsRemaining: Math.max(0, spinTicket.extraSpinsUnlocked - spinTicket.extraSpinsUsed),
-      timestamp: new Date()
-    });
+  
+    
 
     return res.json({
       success: true,
@@ -478,7 +471,6 @@ router.post('/spin-wheel/spin', async (req: Request, res: Response) => {
           amount: winningSegment.value,
           color: winningSegment.color
         },
-        newBalance: user.balanceTK,
         nextSpinTime,
         freeSpinsUsed: spinTicket.freeSpinsUsed,
         extraSpinsUnlocked: spinTicket.extraSpinsUnlocked,
@@ -663,9 +655,9 @@ router.post('/spin-wheel/spin-with-ticket', async (req: Request, res: Response) 
     const userRoom = `user:${telegramId}`;
     
     // Emit XP update
-    io.to(userRoom).emit('user:xp:update', {
+    io.emit('user:xp:update', {
       type: 'user:xp:update',
-      userId : telegramId,
+      telegramId,
       xp: wallet.balances.xp,
       timestamp: new Date()
     });
