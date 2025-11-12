@@ -167,11 +167,11 @@ router.get('/spin-wheel/config', async (req: Request, res: Response) => {
       }
     });
 
-  } catch (error) {
+  } catch (error : any) {
     console.error('Spin Wheel Config GET error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: error.message || 'Internal server error'
     });
   }
 });

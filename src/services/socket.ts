@@ -5,11 +5,14 @@ import {
   WithdrawalController,
   ConverterSocketController,
 } from '../controllers/socket';
+import { UsersController } from 'controllers/socket/usersController';
+ 
 
  
 const connectionController = new ConnectionController();
 export const swapController = new SwapController();
 export const withdrawalController = new WithdrawalController();
+
 let converterController: ConverterSocketController; 
 
 
@@ -20,7 +23,8 @@ export function initializeSocket(io: SocketIOServer): void {
   swapController.setIO(io);
   withdrawalController.setIO(io);
   converterController = new ConverterSocketController(io);
-  
+  new UsersController(io);
+ 
   
   io.on('connection', (socket: Socket) => {
     // Handle connection
@@ -35,6 +39,7 @@ export function initializeSocket(io: SocketIOServer): void {
     
     });
 
+   
     
 
     // Handle disconnection

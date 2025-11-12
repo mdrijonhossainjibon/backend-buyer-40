@@ -32,7 +32,7 @@ const httpServer = createServer(app);
 const io = initializeSocketIO(httpServer);
 
 // Apply Socket.IO authentication middleware
-io.use(socketAuthMiddleware);
+///io.use(socketAuthMiddleware);
 
 // Initialize socket event handlers
 initializeSocket(io);
