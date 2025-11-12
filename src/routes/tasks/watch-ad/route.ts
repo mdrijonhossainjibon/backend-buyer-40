@@ -277,7 +277,7 @@ router.post('/ads/watch', async (req: Request, res: Response) => {
   try {
     const { timestamp, signature, hash } = req.body;
 
-    const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || '';
+    const secretKey = process.env.NEXT_PUBLIC_SECRET_KEY || 'app';
 
     
 
@@ -386,15 +386,14 @@ router.post('/ads/watch', async (req: Request, res: Response) => {
       }
     });
 
-    // Emit socket event for real-time balance update
-    const userRoom = `user:${telegramId}`;
-    io.to(userRoom).emit('user:xp:update', {
+
+    io.emit('user:xp:update', {
       type: 'user:xp:update',
       telegramId,
       xp:  wallet.balances.xp,
       timestamp: new Date()
     });
-
+  
     return res.json({
       success: true,
       message: 'Watch ads success',

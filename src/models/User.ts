@@ -13,27 +13,11 @@ export interface IUser extends Document {
   userId: number
   username?: string
   referralCode: string
-  referralCount: number
   watchedToday: number
-  telegramBonus: number
-  youtubeBonus: number
   status: 'active' | 'suspend'
-  lastAdWatch?: Date
   lastLogin?: Date
   referredBy?: number
-  totalEarned: number
-  withdrawnAmount: number
-  profile: {
-    firstName?: string
-    lastName?: string
-    avatar?: string
-    bio?: string
-  }
-  settings: {
-    notifications: boolean
-    language: string
-    timezone: string
-  }
+ 
   createdAt: Date
   updatedAt: Date
 }
@@ -61,47 +45,13 @@ const UserSchema = new Schema<IUser>({
     index: true
   },
  
-  referralCount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Referral count cannot be negative']
-  },
- 
-  watchedToday: {
-    type: Number,
-    default: 0,
-    min: [0, 'Watched today cannot be negative']
-  },
-  totalEarned: {
-    type: Number,
-    default: 0,
-    min: [0, 'Total earned cannot be negative']
-  },
-  withdrawnAmount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Withdrawn amount cannot be negative']
-  },
- 
-  telegramBonus: {
-    type: Number,
-    default: 0,
-    min: [0, 'Telegram bonus cannot be negative']
-  },
-  youtubeBonus: {
-    type: Number,
-    default: 0,
-    min: [0, 'YouTube bonus cannot be negative']
-  },
   status: {
     type: String,
     enum: ['active', 'suspend'],
     default: 'active',
     required: true
   },
-  lastAdWatch: {
-    type: Date
-  },
+ 
   lastLogin: {
     type: Date,
     default: Date.now
@@ -111,42 +61,6 @@ const UserSchema = new Schema<IUser>({
     ref: 'User'
   },
   
-  profile: {
-    firstName: {
-      type: String,
-      trim: true,
-      maxlength: [50, 'First name cannot exceed 50 characters']
-    },
-    lastName: {
-      type: String,
-      trim: true,
-      maxlength: [50, 'Last name cannot exceed 50 characters']
-    },
-    avatar: {
-      type: String,
-      trim: true
-    },
-    bio: {
-      type: String,
-      trim: true,
-      maxlength: [500, 'Bio cannot exceed 500 characters']
-    }
-  },
-  settings: {
-    notifications: {
-      type: Boolean,
-      default: true
-    },
-    language: {
-      type: String,
-      default: 'en',
-      enum: ['en', 'bn']
-    },
-    timezone: {
-      type: String,
-      default: 'Asia/Dhaka'
-    }
-  }
 }, {
   timestamps: true,
    
