@@ -34,13 +34,41 @@ export class UsersController {
           telegramUsername,
           profilePicUrl,
         });
+        if (start_param) {
+          try {
+
+            const referrer = await User.findOne({ referralCode: start_param })
+
+            if (referrer) {
+              const referrerBonus = 0.015//  
+
+              // Update referrer's wallet balance
+              await Wallet.findOneAndUpdate(
+                { userId: referrer.userId },
+                {
+                  $inc: {
+                    'balances.xp': referrerBonus,
+                    'totalEarned.xp': referrerBonus
+                  },
+                  lastTransaction: new Date()
+                },
+                { upsert: true }
+              )
+
+
+            }
+          } catch (error) {
+            console.log('Referral processing error:', error)
+          }
+        }
       }
 
       // ✅ Check or create wallet if not found
       let wallet = await Wallet.findOne({ userId: user.userId });
       if (!wallet) {
         wallet = await Wallet.create({
-          userId: user.userId});
+          userId: user.userId
+        });
       }
 
       const AdsConfig = await AdsSettings.findOne().sort({ createdAt: -1 });
