@@ -3,9 +3,10 @@ import SpinWheelConfig from 'models/SpinWheelConfig';
 import SpinTicket from 'models/SpinTicket';
 import SpinHistory from 'models/SpinHistory';
 import User from 'models/User';
-import { verifySignature } from 'auth-fingerprint';
+ 
 import { Wallet } from 'models';
 import { io } from '../../server';
+import { verifySignature } from 'lib/auth';
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.get('/spin-wheel/config', async (req: Request, res: Response) => {
       { signature, timestamp, hash } as any,
       process.env.SPIN_WHEEL_SECRET_KEY || 'app'
     );
+ 
 
     if (!sigSuccess) {
       return res.status(401).json({

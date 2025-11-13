@@ -3,10 +3,10 @@ import { Server as HTTPServer } from 'http';
 
 export const socketConfig: Partial<ServerOptions> = {
   cors: {
-    origin: process.env.CORS_ORIGIN || '*',
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
+      origin: process.env.CORS_ORIGIN || '*', // allow all origins
+      methods: ['GET', 'POST'],
+      credentials: false,
+    },
   path: '/ws',
   transports: ['websocket', 'polling'],
   pingTimeout: 60000,
