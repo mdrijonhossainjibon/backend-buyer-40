@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import type { Router as ExpressRouter } from 'express'
-import { verifySignature } from 'auth-fingerprint'
+import { verifySignature } from 'lib/auth';
 import User from 'models/User'
 import Activity from 'models/Activity'
 import AdsSettings from 'models/AdsSettings'

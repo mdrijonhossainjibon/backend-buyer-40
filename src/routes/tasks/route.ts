@@ -1,12 +1,13 @@
 import { Router, Request, Response } from 'express'
-import { verifySignature } from 'auth-fingerprint'
+
 import TaskModel from 'models/Task'
 import ClaimedTask from 'models/ClaimedTask'
 import User from 'models/User'
 import Wallet from 'models/Wallet'
 import Activity from 'models/Activity'
-import { checkTelegramMembership, extractTelegramId, sendTelegramNotification } from 'lib/telegramVerification'
+import { checkTelegramMembership, extractTelegramId, sendTelegramNotification } from 'lib/telegramVerification';
 import { io } from '../../server'
+import { verifySignature } from 'lib/auth';
 
 const router = Router();
 

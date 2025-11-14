@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { UserMysteryBox, MysteryBoxSettings, User, Wallet , Activity  } from 'models';
 import SpinTicket from 'models/SpinTicket';
-import { verifySignature } from 'auth-fingerprint';
-
+import { verifySignature } from 'lib/auth';
 const router = Router();
 
 // Helper function to check eligibility

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { verifySignature } from 'auth-fingerprint'
+import { verifySignature } from 'lib/auth';
 import AdsSettings from 'models/AdsSettings'
  
  

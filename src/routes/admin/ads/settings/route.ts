@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import AdsSettings from 'models/AdsSettings';
-import {  verifySignature  } from 'auth-fingerprint'
+import { verifySignature } from 'lib/auth';
 
 const router = Router();
 
