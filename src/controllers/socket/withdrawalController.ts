@@ -14,7 +14,7 @@ export class WithdrawalController {
    * Set the socket.io server instance
    */
   setIO(io: SocketIOServer): void {
-     this.io = io;
+    this.io = io;
   }
 
   /**
@@ -30,7 +30,7 @@ export class WithdrawalController {
   ): Promise<void> {
     try {
       console.log(`🔄 Processing withdrawal ${withdrawalId} for user ${userId}`);
- 
+
       this.io?.emit('withdrawal:status:update', {
         withdrawalId,
         userId,
@@ -66,7 +66,7 @@ export class WithdrawalController {
 
       // Step 4: Success - Deduct from wallet and unlock (5 seconds delay)
       await new Promise(resolve => setTimeout(resolve, 5000));
-      
+
       // Update wallet: deduct from balance and unlock
       await Wallet.findOneAndUpdate(
         { userId },
@@ -116,7 +116,7 @@ export class WithdrawalController {
 
     } catch (error: any) {
       console.error(`❌ Withdrawal ${withdrawalId} failed:`, error);
-      
+
       // Unlock the funds on failure
       await Wallet.findOneAndUpdate(
         { userId },

@@ -21,6 +21,9 @@ router.get('/crypto-coins', async (req: Request, res: Response) => {
       networks: coin.networks.filter(network => network.isActive)
     }));
 
+
+    
+    
     return res.json({
       success: true,
       data: formattedCoins,
@@ -128,4 +131,53 @@ router.delete('/admin/crypto-coins/:id', async (req: Request, res: Response) => 
   }
 });
 
+
+
+router.delete('/admin/crypto-coins/:id/network/:networkName', async (req: Request, res: Response) => {
+  try {
+    const { id, networkName } = req.params;
+
+    // Find coin
+const coin = await CryptoCoin.findOne({ id: { $regex: new RegExp(`^${id}$`, 'i') }});
+
+
+
+    if (!coin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Crypto coin not found'
+      });
+    }
+
+    // Filter out the network by name
+    const updatedNetworks = coin.networks.filter(
+      (net) => net.id !== networkName
+    );
+
+    // If nothing removed
+    if (updatedNetworks.length === coin.networks.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Network not found in coin'
+      });
+    }
+
+    // Save updated networks
+    coin.networks = updatedNetworks;
+    await coin.save();
+
+    return res.json({
+      success: true,
+      data: coin.networks,
+      message: `${networkName} network removed successfully`
+    });
+
+  } catch (error: any) {
+    console.error('Error deleting network:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error'
+    });
+  }
+});
 export default router;

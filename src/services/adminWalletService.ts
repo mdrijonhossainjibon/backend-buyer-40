@@ -81,7 +81,7 @@ class AdminWalletService {
    * Get all admin wallets
    */
   async getAllAdminWallets(): Promise<IAdminWallet[]> {
-    return await AdminWallet.find({ isActive: true });
+    return await AdminWallet.find({   });
   }
 
   /**

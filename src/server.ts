@@ -11,7 +11,7 @@ import connectDB from './config/database';
 import apiRoutes from './routes/v1';
 import { initializeSocketIO } from './config/socket';
 import { initializeSocket } from './services/socket';
-import { socketAuthMiddleware } from './middlewares/socketAuth';
+
 import 'services/telegram';
 import { userActivityReminderJob } from './jobs/userActivityReminder';
 

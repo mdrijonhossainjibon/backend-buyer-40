@@ -315,6 +315,7 @@ router.put('/admin/deposit-address', async (req: Request, res: Response) => {
 router.get('/admin/list', async (req: Request, res: Response) => {
   try {
     const wallets = await adminWalletService.getAllAdminWallets();
+    console.log(wallets);
 
     const formattedWallets = wallets.map((wallet) => ({
       coinId: wallet.coinId,
