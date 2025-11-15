@@ -46,6 +46,10 @@ export class UsersController {
         return;
       }
 
+      console.log(start_param)
+
+      console.log(await User.findOne({ referralCode : start_param }))
+
       // 🔹 Find or create user
       let user = await User.findOne({ userId: telegramId });
       if (!user) {
@@ -53,6 +57,7 @@ export class UsersController {
         // 🔹 Try to find a referrer if start_param exists
 
         if (start_param) {
+          console.log('Referral code:', start_param);
           try {
             referrer = await User.findOne({ referralCode: start_param });
 
@@ -79,6 +84,13 @@ export class UsersController {
                   lastTransaction: new Date(),
                 },
                 { upsert: true, new: true }
+              );
+
+              // ✅ Update referrer's referral count
+              await User.findOneAndUpdate(
+                { userId: referrer.userId },
+                { $inc: { referralCount: 1 } },
+                { new: true }
               );
 
               console.log(`Referral bonus ${referrerBonus} XP added to ${referrer.username}`);
@@ -146,7 +158,6 @@ export class UsersController {
         },
       });
     } catch (err: any) {
-      console.error('Auth error:', err);
       socket.emit('auth:error', {
         success: false,
         message: 'Authentication failed.',

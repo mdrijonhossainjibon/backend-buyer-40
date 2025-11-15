@@ -30,10 +30,8 @@ export class WithdrawalController {
   ): Promise<void> {
     try {
       console.log(`🔄 Processing withdrawal ${withdrawalId} for user ${userId}`);
-
-      // Step 1: Validating (5 seconds delay)
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      this.io?.to(`user:${userId}`).emit('withdrawal:status:update', {
+ 
+      this.io?.emit('withdrawal:status:update', {
         withdrawalId,
         userId,
         status: 'validating',
@@ -44,7 +42,7 @@ export class WithdrawalController {
 
       // Step 2: Processing (10 seconds delay)
       await new Promise(resolve => setTimeout(resolve, 10000));
-      this.io?.to(`user:${userId}`).emit('withdrawal:status:update', {
+      this.io?.emit('withdrawal:status:update', {
         withdrawalId,
         userId,
         status: 'processing',
@@ -56,7 +54,7 @@ export class WithdrawalController {
       // Step 3: Sending transaction (10 seconds delay)
       await new Promise(resolve => setTimeout(resolve, 10000));
       const mockTxHash = `0x${Math.random().toString(16).substring(2, 66)}`;
-      this.io?.to(`user:${userId}`).emit('withdrawal:status:update', {
+      this.io?.emit('withdrawal:status:update', {
         withdrawalId,
         userId,
         status: 'sent',
@@ -103,7 +101,7 @@ export class WithdrawalController {
       );
 
       // Send success event
-      this.io?.to(`user:${userId}`).emit('withdrawal:status:update', {
+      this.io?.emit('withdrawal:status:update', {
         withdrawalId,
         userId,
         status: 'completed',
@@ -139,7 +137,7 @@ export class WithdrawalController {
       );
 
       // Send failure event
-      this.io?.to(`user:${userId}`).emit('WITHDRAWAL_STATUS_UPDATE', {
+      this.io?.emit('WITHDRAWAL_STATUS_UPDATE', {
         withdrawalId,
         userId,
         status: 'failed',
