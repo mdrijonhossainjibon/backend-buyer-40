@@ -88,7 +88,7 @@ export class WithdrawalController {
       // Step 4: Check admin wallet balance before sending
       let txHash: string;
       
-      if (coin.type === 'native' || coin.isNativeCoin) {
+      if (coin.isNativeCoin || networkInfo.type === 'Native') {
         // Check native balance
         const nativeBalance = await getNativeBalance(networkInfo.rpcUrl, adminWallet.address);
         const formattedBalance = parseFloat(formatNativeBalance(nativeBalance));

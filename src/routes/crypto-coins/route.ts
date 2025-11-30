@@ -6,9 +6,9 @@ const router = Router();
 // Get all active crypto coins with their networks
 router.get('/crypto-coins', async (req: Request, res: Response) => {
   try {
-    // Fetch all active crypto coins, sorted by order
+    // Fetch all active crypto coins, sorted by name
     const cryptoCoins = await CryptoCoin.find({ isActive: true })
-      .sort({ order: 1 })
+      .sort({ name: 1 })
       .lean();
  
 
@@ -62,8 +62,6 @@ router.post('/admin/crypto-coins', async (req: Request, res: Response) => {
       existingCoin.icon = icon;
       existingCoin.networks = networks;
       existingCoin.isActive = isActive !== undefined ? isActive : true;
-      existingCoin.order = order !== undefined ? order : 0;
-      
       await existingCoin.save();
 
       return res.json({

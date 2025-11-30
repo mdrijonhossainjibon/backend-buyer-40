@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "TypeScript Express server for EarnFrom application",
   "scripts": {
-    "build": "tsc && tsc-alias",
+    "build": "tsc && tsc-alias && xcopy /E /I /Y src\\config dist\\config",
     "build:watch": "tsc --watch",
     "start": "node -r tsconfig-paths/register dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register --watch src src/server.ts",
