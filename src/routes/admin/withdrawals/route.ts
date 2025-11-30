@@ -175,4 +175,65 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
+// GET route for fetching a specific withdrawal by ID
+router.get('/:withdrawalId', async (req: Request, res: Response) => {
+  try {
+    const { withdrawalId } = req.params
+
+    if (!withdrawalId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Withdrawal ID is required'
+      })
+    }
+
+    // Find the withdrawal
+    const withdrawal = await Withdrawal.findOne({ withdrawalId })
+    
+    if (!withdrawal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Withdrawal not found'
+      })
+    }
+
+    // Get user information
+    const user = await User.findOne({ userId: withdrawal.userId })
+
+    // Format response data
+    const formattedWithdrawal = {
+      withdrawalId: withdrawal.withdrawalId,
+      userId: withdrawal.userId,
+      username: user?.username || `${user?.profile?.firstName || ''} ${user?.profile?.lastName || ''}`.trim() || 'Unknown User',
+      amount: withdrawal.amount,
+      currency: withdrawal.currency,
+      network: withdrawal.network,
+      address: withdrawal.address,
+      status: withdrawal.status,
+      requestedAt: withdrawal.requestedAt,
+      fee: withdrawal.fee,
+      txHash: withdrawal.txHash,
+      processedAt: withdrawal.processedAt,
+      processedBy: withdrawal.processedBy,
+      rejectionReason: withdrawal.rejectionReason,
+      metadata: withdrawal.metadata,
+      createdAt: withdrawal.createdAt,
+      updatedAt: withdrawal.updatedAt
+    }
+
+    return res.json({
+      success: true,
+      data: formattedWithdrawal,
+      message: 'Withdrawal retrieved successfully'
+    })
+
+  } catch (error) {
+    console.error('Admin withdrawal GET by ID API error:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    })
+  }
+})
+
 export default router

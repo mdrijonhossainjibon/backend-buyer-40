@@ -17,6 +17,9 @@ export { default as ConversionRate } from './ConversionRate';
 export { default as ConversionHistory } from './ConversionHistory';
 export { default as CryptoCoin } from './CryptoCoin';
 export { default as AdminWallet } from './AdminWallet';
+export { default as UpdateInfo } from './UpdateInfo';
+export { default as UpdateStats } from './UpdateStats';
+export { default as UpdateDownload } from './UpdateDownload';
 
 // Export types
 export type { IUser } from './User';
@@ -29,3 +32,6 @@ export type { IConversionRate } from './ConversionRate';
 export type { IConversionHistory } from './ConversionHistory';
 export type { ICryptoCoin, INetwork } from './CryptoCoin';
 export type { IAdminWallet } from './AdminWallet';
+export type { IUpdateInfo } from './UpdateInfo';
+export type { IUpdateStats } from './UpdateStats';
+export type { IUpdateDownload } from './UpdateDownload';

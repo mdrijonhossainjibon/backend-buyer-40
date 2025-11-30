@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { UpdateService } from './service';
-import { UpdateInfo, VersionCheck } from './types';
+
 
 export class UpdateController {
   private updateService: UpdateService;
