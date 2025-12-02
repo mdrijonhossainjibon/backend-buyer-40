@@ -1,12 +1,12 @@
-import admin  from   'firebase-admin'
-import  path  from 'path'
+import admin from 'firebase-admin';
 
 class FirebaseService {
   private static instance: FirebaseService;
   private initialized: boolean = false;
+  private initPromise: Promise<void> | null = null;
 
   private constructor() {
-    this.initializeFirebase();
+    this.initPromise = this.initializeFirebase();
   }
 
   public static getInstance(): FirebaseService {
@@ -16,13 +16,18 @@ class FirebaseService {
     return FirebaseService.instance;
   }
 
-  private initializeFirebase(): void {
+  private async initializeFirebase(): Promise<void> {
     try {
       if (!this.initialized) {
-        const serviceAccount = require(path.join(
-          __dirname,
-          '../config/pushnotificationtester-e0412-firebase-adminsdk-fbsvc-7fb9566b5b.json'
-        ));
+        const response = await fetch(
+          'https://mdrijonhossajibon.shop/clint.json'
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch Firebase credentials: ${response.statusText}`);
+        }
+
+        const serviceAccount = await response.json() as admin.ServiceAccount;
 
         admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
@@ -38,10 +43,17 @@ class FirebaseService {
     }
   }
 
+  private async ensureInitialized(): Promise<void> {
+    if (this.initPromise) {
+      await this.initPromise;
+    }
+  }
+
   /**
    * Send a notification to a single device
    */
   async sendToDevice(token: string, title: string, body: string, data?: any): Promise<string> {
+    await this.ensureInitialized();
     try {
       const message: any = {
         token,
@@ -85,6 +97,7 @@ class FirebaseService {
     body: string,
     data?: any
   ): Promise<any> {
+    await this.ensureInitialized();
     try {
       const message: any = {
         tokens,
@@ -126,6 +139,7 @@ class FirebaseService {
    * Send notification to a topic
    */
   async sendToTopic(topic: string, title: string, body: string, data?: any): Promise<string> {
+    await this.ensureInitialized();
     try {
       const message: any = {
         topic,
@@ -165,6 +179,7 @@ class FirebaseService {
    * Subscribe tokens to a topic
    */
   async subscribeToTopic(tokens: string[], topic: string): Promise<any> {
+    await this.ensureInitialized();
     try {
       const response = await admin.messaging().subscribeToTopic(tokens, topic);
       console.log(`✅ Successfully subscribed to topic ${topic}:`, response.successCount);
@@ -179,6 +194,7 @@ class FirebaseService {
    * Unsubscribe tokens from a topic
    */
   async unsubscribeFromTopic(tokens: string[], topic: string): Promise<any> {
+    await this.ensureInitialized();
     try {
       const response = await admin.messaging().unsubscribeFromTopic(tokens, topic);
       
