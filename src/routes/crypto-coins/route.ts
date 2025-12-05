@@ -1,181 +1,201 @@
-import { Router, Request, Response } from 'express';
-import CryptoCoin from 'models/CryptoCoin';
+import { Router, Request, Response } from "express";
+import CryptoCoin from "models/CryptoCoin";
 
 const router = Router();
 
-// Get all active crypto coins with their networks
-router.get('/crypto-coins', async (req: Request, res: Response) => {
+// ================================
+// Default crypto coins with networks
+// ================================
+const DEFAULT_CRYPTO_COINS = [
+  {
+    id: "usdt",
+    name: "Tether",
+    symbol: "USDT",
+    icon: "/svg/color/usdt.svg",
+    status: "active",
+    networks: [
+      {
+        network: "bep20-testnet",
+        contractAddress: "0x55d398326f99059fF775485246999027B3197955",
+        minDeposit: "10",
+        minimumWithdraw: "5",
+        withdrawFee: "1",
+        fee: "1",
+        requiresMemo: false,
+        confirmations: 15,
+        estimatedTime: "~5 min"
+      }
+    ]
+  },
+  {
+    id: "bnb",
+    name: "Binance Coin",
+    symbol: "BNB",
+    icon: "/svg/color/bnb.svg",
+    status: "active",
+    networks: [
+      {
+        network: "bep20-testnet",
+        minDeposit: "0.01",
+        minimumWithdraw: "0.005",
+        withdrawFee: "0.0005",
+        fee: "0.001",
+        requiresMemo: false,
+        confirmations: 15,
+        estimatedTime: "~3 min"
+      }
+    ]
+  }
+];
+
+// ================================
+// GET ALL COINS
+// ================================
+router.get("/crypto-coins", async (req: Request, res: Response) => {
   try {
-    // Fetch all active crypto coins, sorted by name
-    const cryptoCoins = await CryptoCoin.find({ isActive: true })
-      .sort({ name: 1 })
-      .lean();
+    const count = await CryptoCoin.countDocuments();
  
+    // Insert defaults if empty
+    if (count === 0) {
+      await CryptoCoin.insertMany(DEFAULT_CRYPTO_COINS);
+    }
 
-    // Filter to only include active networks
-    const formattedCoins = cryptoCoins.map(coin => ({
-      id: coin.id,
-      name: coin.name,
-      symbol: coin.symbol,
-      icon: coin.icon,
-      networks: coin.networks.filter(network => network.isActive)
-    }));
+    const coins = await CryptoCoin.find().sort({ name: 1 }).lean();
 
-
-    
-    
     return res.json({
       success: true,
-      data: formattedCoins,
-      message: 'Crypto coins fetched successfully'
+      data: coins,
+      message: "Crypto coins fetched successfully"
     });
-
   } catch (error: any) {
-    console.error('Error fetching crypto coins:', error);
     return res.status(500).json({
       success: false,
-      message: error.message || 'Internal server error'
+      message: error.message
     });
   }
 });
 
-// Admin endpoint to add/update crypto coin
-router.post('/admin/crypto-coins', async (req: Request, res: Response) => {
+// ================================
+// GET SINGLE COIN
+// ================================
+router.get("/crypto-coins/:id", async (req: Request, res: Response) => {
   try {
-    const { id, name, symbol, icon, networks, isActive, order } = req.body;
+    const coin = await CryptoCoin.findOne({ id: req.params.id }).lean();
 
-    // Validate required fields
-    if (!id || !name || !symbol || !icon || !networks) {
+    if (!coin)
+      return res.status(404).json({ success: false, message: "Crypto coin not found" });
+
+    return res.json({
+      success: true,
+      data: coin,
+      message: "Crypto coin fetched successfully"
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// ================================
+// ADMIN: CREATE COIN (with networks)
+// ================================
+router.post("/admin/crypto-coins", async (req: Request, res: Response) => {
+  try {
+    const { id, name, symbol, icon, status, networks } = req.body;
+
+    if (!id || !name || !symbol || !icon || !networks || networks.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: id, name, symbol, icon, networks'
+        message: "Missing required fields or networks array"
       });
     }
 
-    // Check if coin already exists
-    const existingCoin = await CryptoCoin.findOne({ id });
+    const exists = await CryptoCoin.findOne({ id });
+    if (exists)
+      return res.status(400).json({ success: false, message: "Coin ID already exists" });
 
-    if (existingCoin) {
-      // Update existing coin
-      existingCoin.name = name;
-      existingCoin.symbol = symbol.toUpperCase();
-      existingCoin.icon = icon;
-      existingCoin.networks = networks;
-      existingCoin.isActive = isActive !== undefined ? isActive : true;
-      await existingCoin.save();
-
-      return res.json({
-        success: true,
-        data: existingCoin,
-        message: 'Crypto coin updated successfully'
-      });
-    } else {
-      // Create new coin
-      const newCoin = await CryptoCoin.create({
-        id,
-        name,
-        symbol: symbol.toUpperCase(),
-        icon,
-        networks,
-        isActive: isActive !== undefined ? isActive : true,
-        order: order !== undefined ? order : 0
-      });
-
-      return res.json({
-        success: true,
-        data: newCoin,
-        message: 'Crypto coin created successfully'
-      });
-    }
-
-  } catch (error: any) {
-    console.error('Error creating/updating crypto coin:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Internal server error'
+    const coin = new CryptoCoin({
+      id,
+      name,
+      symbol: symbol.toUpperCase(),
+      icon,
+      status: status || "active",
+      networks
     });
-  }
-});
 
-// Admin endpoint to delete crypto coin
-router.delete('/admin/crypto-coins/:id', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    const coin = await CryptoCoin.findOne({ id });
-
-    if (!coin) {
-      return res.status(404).json({
-        success: false,
-        message: 'Crypto coin not found'
-      });
-    }
-
-    // Soft delete by setting isActive to false
-    coin.isActive = false;
     await coin.save();
 
     return res.json({
       success: true,
-      message: 'Crypto coin deactivated successfully'
+      data: coin,
+      message: "Crypto coin created successfully"
     });
-
   } catch (error: any) {
-    console.error('Error deleting crypto coin:', error);
     return res.status(500).json({
       success: false,
-      message: error.message || 'Internal server error'
+      message: error.message
     });
   }
 });
 
-
-
-router.delete('/admin/crypto-coins/:id/network/:networkName', async (req: Request, res: Response) => {
+// ================================
+// ADMIN: UPDATE COIN
+// ================================
+router.put("/admin/crypto-coins/:id", async (req: Request, res: Response) => {
   try {
-    const { id, networkName } = req.params;
+    const coin = await CryptoCoin.findOne({ id: req.params.id });
 
-    // Find coin
-const coin = await CryptoCoin.findOne({ id: { $regex: new RegExp(`^${id}$`, 'i') }});
+    if (!coin)
+      return res.status(404).json({ success: false, message: "Crypto coin not found" });
 
+    const { name, symbol, icon, status, networks } = req.body;
 
+    if (name !== undefined) coin.name = name;
+    if (symbol !== undefined) coin.symbol = symbol.toUpperCase();
+    if (icon !== undefined) coin.icon = icon;
+    if (status !== undefined) coin.status = status;
 
-    if (!coin) {
-      return res.status(404).json({
-        success: false,
-        message: 'Crypto coin not found'
-      });
+    if (networks !== undefined && Array.isArray(networks)) {
+      coin.networks = networks; // replace the whole network list
     }
 
-    // Filter out the network by name
-    const updatedNetworks = coin.networks.filter(
-      (net) => net.id !== networkName
-    );
-
-    // If nothing removed
-    if (updatedNetworks.length === coin.networks.length) {
-      return res.status(404).json({
-        success: false,
-        message: 'Network not found in coin'
-      });
-    }
-
-    // Save updated networks
-    coin.networks = updatedNetworks;
     await coin.save();
 
     return res.json({
       success: true,
-      data: coin.networks,
-      message: `${networkName} network removed successfully`
+      data: coin,
+      message: "Crypto coin updated successfully"
     });
-
   } catch (error: any) {
-    console.error('Error deleting network:', error);
     return res.status(500).json({
       success: false,
-      message: error.message || 'Internal server error'
+      message: error.message
     });
   }
 });
+
+// ================================
+// ADMIN: DELETE COIN
+// ================================
+router.delete("/admin/crypto-coins/:id", async (req: Request, res: Response) => {
+  try {
+    const coin = await CryptoCoin.findOneAndDelete({ id: req.params.id });
+
+    if (!coin)
+      return res.status(404).json({ success: false, message: "Crypto coin not found" });
+
+    return res.json({
+      success: true,
+      message: "Crypto coin deleted successfully"
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 export default router;

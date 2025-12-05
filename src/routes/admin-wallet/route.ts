@@ -3,21 +3,21 @@ import CryptoCoin from '../../models/CryptoCoin';
 import Wallets from '../../models/Wallets';
 import { AdminWallet } from '../../models';
 import { generateHotWallet } from 'auth-fingerprint';
-
+import Network from 'models/Network';
 const router = Router();
 
 /**
- * GET /api/v1/admin-wallet/deposit-address/:symbol/:networkId
- * Get deposit address for a specific coin and network
+ * GET /api/v1/admin-wallet/deposit-address/:symbol
+ * Get deposit address for a specific coin
  */
-router.get('/deposit-address/:symbol/:networkId', async (req: Request, res: Response) => {
+router.get('/deposit-address/:symbol', async (req: Request, res: Response) => {
   try {
-    const { symbol, networkId } = req.params;
+    const { symbol } = req.params;
 
     // Verify coin exists and is active
     const coin = await CryptoCoin.findOne({
       symbol: symbol.toUpperCase(),
-      isActive: true,
+      status: 'active',
     });
 
     if (!coin) {
@@ -27,19 +27,7 @@ router.get('/deposit-address/:symbol/:networkId', async (req: Request, res: Resp
       });
     }
 
-    // Verify network exists and is active
-    const network = coin.networks.find(
-      (n) => n.id === networkId && n.isActive
-    );
-
-    if (!network) {
-      return res.status(404).json({
-        success: false,
-        message: 'Network not found or inactive',
-      });
-    }
-
-    // Get hot wallet (AdminWallet) that supports this network
+    // Get hot wallet (AdminWallet) that supports this coin
     let hotWallet = await AdminWallet.findOne({ 
       status: 'active',
     });
@@ -58,10 +46,10 @@ router.get('/deposit-address/:symbol/:networkId', async (req: Request, res: Resp
           privateKey: generated.privateKey,
           address: generated.address,
           status: 'active',
-          supportedNetworks: [networkId],
+          supportedNetworks: [coin.id],
         });
         
-        console.log(`✅ Auto-created hot wallet for ${networkId}`);
+        console.log(`✅ Auto-created hot wallet for ${coin.symbol}`);
       } catch (createError: any) {
         console.error('❌ Error auto-creating hot wallet:', createError);
         return res.status(500).json({
@@ -71,20 +59,31 @@ router.get('/deposit-address/:symbol/:networkId', async (req: Request, res: Resp
       }
     }
 
+    // Map networks with deposit address
+    const networks = coin.networks.map((network) => {
+      return {
+        network: network.network,
+        contractAddress: network.contractAddress || null,
+        minDeposit: network.minDeposit,
+        minimumWithdraw: network.minimumWithdraw,
+        withdrawFee: network.withdrawFee,
+        requiresMemo: network.requiresMemo || false,
+        memoLabel: network.memoLabel || null,
+        fee: network.fee,
+        confirmations: network.confirmations,
+        estimatedTime: network.estimatedTime || '~5 min',
+        depositAddress: hotWallet.address,
+      };
+    });
+
     return res.json({
       success: true,
       data: {
-        symbol: symbol.toUpperCase(),
+        symbol: coin.symbol,
         coinName: coin.name,
-        network: {
-          id: network.id,
-          name: network.name,
-          minDeposit: network.minDeposit,
-          confirmations: network.confirmations,
-          fee: network.fee,
-          requiresMemo: network.requiresMemo,
-        },
-        depositAddress: hotWallet.address,
+        icon: coin.icon,
+        status: coin.status,
+        networks,
       },
       message: 'Deposit address retrieved successfully',
     });
@@ -99,16 +98,16 @@ router.get('/deposit-address/:symbol/:networkId', async (req: Request, res: Resp
 
 /**
  * GET /api/v1/admin-wallet/deposit-info/:symbol
- * Get wallet info for a coin (balance + networks + deposit addresses)
+ * Get wallet info for a coin (balance + deposit address)
  */
 router.get('/deposit-info/:symbol', async (req: Request, res: Response) => {
   try {
     const { symbol } = req.params;
 
-    // Get coin with networks
+    // Get coin
     const coin = await CryptoCoin.findOne({
       symbol: symbol.toUpperCase(),
-      isActive: true,
+      status: 'active',
     });
 
     if (!coin) {
@@ -131,27 +130,25 @@ router.get('/deposit-info/:symbol', async (req: Request, res: Response) => {
       });
     }
 
-    // Get hot wallets for deposit addresses
-    const hotWallets = await AdminWallet.find({ status: 'active' });
+    // Get hot wallet for deposit address
+    const hotWallet = await AdminWallet.findOne({ status: 'active' });
 
-    // Build response with all active networks
-    const networks = coin.networks
-      .filter((network) => network.isActive)
-      .map((network) => {
-        const isSupported = wallet.supportedNetworks.includes(network.id);
-        // Find hot wallet that supports this network
-        const hotWallet = hotWallets.find(hw => hw.supportedNetworks.includes(network.id));
-        return {
-          id: network.id,
-          name: network.name,
-          minDeposit: network.minDeposit,
-          confirmations: network.confirmations,
-          fee: network.fee,
-          requiresMemo: network.requiresMemo,
-          isSupported,
-          depositAddress: hotWallet?.address || null,
-        };
-      });
+    // Map networks with deposit address
+    const networks = coin.networks.map((network) => {
+      return {
+        network: network.network,
+        contractAddress: network.contractAddress || null,
+        minDeposit: network.minDeposit,
+        minimumWithdraw: network.minimumWithdraw,
+        withdrawFee: network.withdrawFee,
+        requiresMemo: network.requiresMemo || false,
+        memoLabel: network.memoLabel || null,
+        fee: network.fee,
+        confirmations: network.confirmations,
+        estimatedTime: network.estimatedTime || '~5 min',
+        depositAddress: hotWallet?.address || null,
+      };
+    });
 
     return res.json({
       success: true,
@@ -159,7 +156,8 @@ router.get('/deposit-info/:symbol', async (req: Request, res: Response) => {
         symbol: wallet.symbol,
         balance: wallet.balance,
         status: wallet.status,
-        supportedNetworks: wallet.supportedNetworks,
+        coinIcon: coin.icon,
+        coinStatus: coin.status,
         networks,
       },
       message: 'Wallet info retrieved successfully',
@@ -702,35 +700,45 @@ router.get('/deposit-coins', async (req: Request, res: Response) => {
   try {
     
     // Get all active coins
-    const coins = await CryptoCoin.find({ isActive: true });
+    const coins = await CryptoCoin.find({ status: 'active' });
 
     
     // Get all active hot wallets
-    const hotWallets = await AdminWallet.find({ status: 'active' });
+    const hotWallet = await AdminWallet.findOne({ status: 'active' });
+
+    // Get all networks from Network model
+    const allNetworks = await Network.find({ status: 'active' });
 
     const depositCoins = coins.map((coin) => {
-  
-      const networks = coin.networks
-        .filter((network) => network.isActive)
-        .map((network) => {
-          const hotWallet = hotWallets.find(hw => hw.supportedNetworks.includes(network.id));
-          return {
-            id: network.id,
-            name: network.name,
-            type: network.type || 'Native',
-            address: hotWallet?.address || '',
-            minDeposit: String(network.minDeposit || '0'),
-            confirmations: network.confirmations || 1,
-            estimatedTime: network.estimatedTime || '~5 min',
-            fee: String(network.fee || '0'),
-            ...(network.requiresMemo && { memo: network.memo || '' }),
-          };
-        });
+      // Map networks with deposit address and type from Network model
+      const networks = coin.networks.map((network) => {
+        // Find matching network from Network model to get type
+        const networkModel = allNetworks.find(n => n.id === network.network);
+        
+        return {
+          id: network.network,
+          name: networkModel?.name || network.network,
+          type: networkModel?.type || 'Native',
+          contractAddress: network.contractAddress || null,
+          minDeposit: network.minDeposit,
+          minimumWithdraw: network.minimumWithdraw,
+          withdrawFee: network.withdrawFee,
+          requiresMemo: network.requiresMemo || false,
+          memoLabel: network.memoLabel || null,
+          fee: network.fee,
+          confirmations: network.confirmations,
+          estimatedTime: network.estimatedTime || '~5 min',
+          rpcUrl: networkModel?.rpcUrl || null,
+          address: hotWallet?.address || '',
+        };
+      });
 
       return {
-        id: coin.symbol.toLowerCase(),
+        id: coin.id,
         name: coin.name,
         symbol: coin.symbol,
+        icon: coin.icon,
+        status: coin.status,
         networks,
       };
     });

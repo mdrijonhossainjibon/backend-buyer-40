@@ -1,6 +1,7 @@
 require('tsconfig-paths/register');
 import express, { Application, Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
+import os from 'os';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -122,10 +123,15 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Start server
 httpServer.listen(PORT, async () => {
+  const networkInterfaces = os.networkInterfaces();
+  const localIP = Object.values(networkInterfaces)
+    .flat()
+    .find((iface) => iface && iface.family === 'IPv4' && !iface.internal)?.address || 'localhost';
+
   console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📍 Health check: http://localhost:${PORT}/health`);
-  console.log(`📍 API endpoint: http://localhost:${PORT}/api`);
-  console.log(`🔌 WebSocket endpoint: ws://localhost:${PORT}/ws/withdraw`);
+  console.log(`📍 Health check: http://${localIP}:${PORT}/health`);
+  console.log(`📍 API endpoint: http://${localIP}:${PORT}/api`);
+  console.log(`🔌 WebSocket endpoint: ws://${localIP}:${PORT}/ws/withdraw`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
  
 });

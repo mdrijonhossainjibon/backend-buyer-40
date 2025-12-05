@@ -17,9 +17,7 @@ export interface IUser extends Document {
   status: 'active' | 'suspend'
   lastLogin?: Date
   referredBy?: number
-  fcmToken?: string
   lastTokenUpdate?: Date
- 
   createdAt: Date
   updatedAt: Date
 }
@@ -62,11 +60,7 @@ const UserSchema = new Schema<IUser>({
     type: Number,
     ref: 'User'
   },
-  fcmToken: {
-    type: String,
-    trim: true,
-    index: true
-  },
+
   lastTokenUpdate: {
     type: Date
   },

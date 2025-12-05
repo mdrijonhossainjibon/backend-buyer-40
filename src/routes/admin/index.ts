@@ -13,6 +13,7 @@ import withdrawalActionRouter from 'routes/admin/withdrawal-action/route';
 import adsSettingsRouter from 'routes/admin/ads/settings/route';
 import adminsRouter from 'routes/admin/admins/route';
 import spinConfigRouter from 'routes/admin/spin-config/route';
+import tasksRouter from 'routes/admin/tasks/route';
 const router = Router();
 
 // Bot routes
@@ -48,5 +49,8 @@ router.use('/admins', adminsRouter);
 
 // Spin config routes
 router.use('/spin-config', spinConfigRouter);
+
+// Tasks routes
+router.use('/tasks', tasksRouter);
 
 export default router;

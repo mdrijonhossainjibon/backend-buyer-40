@@ -13,6 +13,8 @@ router.get('/', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string || '10')
     const offset = parseInt(req.query.offset as string || '0')
 
+    console.log(req.query)
+
     // Build query filter
     const query: any = {}
     

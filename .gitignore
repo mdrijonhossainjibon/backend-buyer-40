@@ -5,7 +5,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Production build
-
+dist/
 build/
 
 # Environment variables
@@ -15,10 +15,6 @@ build/
 .env.test.local
 .env.production.local
 
-# Firebase credentials
-*firebase*.json
-*-adminsdk-*.json
-src/config/pushnotificationtester-e0412-firebase-adminsdk-fbsvc-7fb9566b5b.json
 
 
 # Logs

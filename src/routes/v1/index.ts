@@ -13,6 +13,7 @@ import walletRouter from 'routes/wallet/route';
 import mysteryBoxRouter from 'routes/mystery-box/route';
 import converterRouter from 'routes/converter/route';
 import cryptoCoinsRouter from 'routes/crypto-coins/route';
+import networkRouter from 'routes/network/route';
 import adminWalletRouter from 'routes/admin-wallet/route';
 import cronRouter from 'routes/cron/route';
 import firebaseRouter from 'routes/firebase/route';
@@ -56,6 +57,9 @@ router.use('/v1/admin', adminRouter);
 
 // Mount crypto coins routes
 router.use('/v1', cryptoCoinsRouter);
+
+// Mount network routes
+router.use('/v1', networkRouter);
 
 // Mount admin wallet routes
 router.use('/v1/admin-wallet', adminWalletRouter);
