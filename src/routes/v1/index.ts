@@ -20,6 +20,7 @@ import cronRouter from 'routes/cron/route';
 import firebaseRouter from 'routes/firebase/route';
 import notificationsRouter from 'routes/notifications/route';
 import updateRouter from 'routes/update/route';
+import platformConfigRouter from 'routes/platform-config/route';
 
 const router = Router();
  
@@ -77,6 +78,9 @@ router.use('/v1/firebase', firebaseRouter);
 // Mount Notifications routes
 router.use('/v1', notificationsRouter);
  router.use('/v1', updateRouter);
+
+// Mount Platform Config routes
+router.use('/v1/platform/config', platformConfigRouter);
  
 export default router;
  

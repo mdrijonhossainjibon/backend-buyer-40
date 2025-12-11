@@ -18,6 +18,7 @@ export interface IUser extends Document {
   lastLogin?: Date
   referredBy?: number
   lastTokenUpdate?: Date
+  withdrawnAmount?: number
   createdAt: Date
   updatedAt: Date
 }
@@ -64,7 +65,11 @@ const UserSchema = new Schema<IUser>({
   lastTokenUpdate: {
     type: Date
   },
-  
+  withdrawnAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Withdrawn amount cannot be negative']
+  }
 }, {
   timestamps: true,
    

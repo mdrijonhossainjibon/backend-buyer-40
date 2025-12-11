@@ -107,6 +107,10 @@ export class WithdrawalController {
         txHash = (result as any).hash || (result as any).transactionHash || String(result);
       } else {
         // Check ERC20 token balance
+        if (!networkInfo.contactAddress) {
+          throw new Error(`Contract address is required for ${coinSymbol} on ${network}`);
+        }
+
         const decimals = await getERC20Decimals(networkInfo.rpcUrl, networkInfo.contactAddress);
         const tokenBalance = await getERC20Balance(networkInfo.rpcUrl, networkInfo.contactAddress, adminWallet.address);
         const formattedBalance = formatTokenBalance(tokenBalance, decimals || 18);

@@ -3,17 +3,19 @@ import mongoose, { Schema, Document } from 'mongoose'
 // Matches frontend WithdrawTransaction interface
 export interface IWithdrawal extends Document {
   withdrawalId: string // Matches 'transactionId' in frontend
-  userId: string
+  userId: number
   amount: number
   currency: string // USDT, BTC, ETH, BNB, TRX
   network: string // TRC20, ERC20, BEP20, etc.
   address: string // Wallet address
-  status: 'completed' | 'pending' | 'failed' | 'processing'
+  status: 'completed' | 'pending' | 'failed' | 'processing' | 'approved' | 'rejected'
   requestedAt: Date // Matches 'date' in frontend
   fee?: number
   txHash?: string // Blockchain transaction hash
   processedAt?: Date
   processedBy?: number
+  rejectionReason?: string
+  metadata?: Record<string, any>
   createdAt: Date
   updatedAt: Date
 }
@@ -34,7 +36,7 @@ const WithdrawalSchema = new Schema<IWithdrawal>({
     index: true
   },
   userId: {
-    type: String,
+    type: Number,
     required: true,
     index: true
   },
@@ -67,7 +69,7 @@ const WithdrawalSchema = new Schema<IWithdrawal>({
   status: {
     type: String,
     required: true,
-    enum: ['completed', 'pending', 'failed', 'processing'],
+    enum: ['completed', 'pending', 'failed', 'processing', 'approved', 'rejected'],
     default: 'pending',
     index: true
   },
@@ -92,6 +94,14 @@ const WithdrawalSchema = new Schema<IWithdrawal>({
   },
   processedBy: {
     type: Number
+  },
+  rejectionReason: {
+    type: String,
+    trim: true
+  },
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true,

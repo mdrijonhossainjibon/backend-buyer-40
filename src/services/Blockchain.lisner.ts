@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import * as cron from 'node-cron';
 import AdminWallet from '../models/AdminWallet';
 import { Admin } from 'models';
-import CryptoCoin, { INetwork } from '../models/CryptoCoin';
+import CryptoCoin from '../models/CryptoCoin';
 import Transaction from '../models/Transaction';
 import { getERC20Balance, getNativeBalance, getERC20Decimals, formatNativeBalance } from 'auth-fingerprint';
 import firebaseService from './firebaseService';
@@ -89,14 +89,14 @@ cron.schedule('*/10 * * * * *', async () => {
     const adminWallets = await AdminWallet.find({ status: 'active' });
     if (adminWallets.length === 0) return;
 
-    // Get all active coins with token type
-    const coins = await CryptoCoin.find({ isActive: true, type: 'token' });
+    // Get all active coins with token type (non-native coins)
+    const coins = await CryptoCoin.find({ isActive: true, isNativeCoin: false });
 
     for (const adminWallet of adminWallets) {
       for (const coin of coins) {
         // Find networks that this wallet supports
         const supportedNetworks = coin.networks.filter(
-          (n: INetwork) => n.isActive && adminWallet.supportedNetworks.includes(n.id)
+          (n) => n.isActive && adminWallet.supportedNetworks.includes(n.id)
         );
 
         for (const network of supportedNetworks) {
@@ -231,7 +231,7 @@ cron.schedule('*/30 * * * * *', async () => {
     for (const adminWallet of adminWallets) {
       for (const coin of nativeCoins) {
         const supportedNetworks = coin.networks.filter(
-          (n: INetwork) => n.isActive && adminWallet.supportedNetworks.includes(n.id)
+          (n) => n.isActive && adminWallet.supportedNetworks.includes(n.id)
         );
 
         for (const network of supportedNetworks) {

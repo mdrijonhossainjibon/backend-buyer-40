@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import User from 'models/User';
 import Withdrawal from 'models/Withdrawal';
-import { Wallet } from 'models';
-
+import { Activity, Wallet } from 'models';
+import dayjs from 'dayjs'
 const router = Router();
 
 // GET /api/v1/admin/stats - Get comprehensive user statistics (Admin Panel Format)
@@ -11,46 +11,31 @@ router.get('/', async (req: Request, res: Response) => {
     // Get total users count
     const totalUsers = await User.countDocuments();
     
-    // Get active users count (users active in last 24 hours)
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const activeToday = await User.countDocuments({ 
-      lastActiveAt: { $gte: oneDayAgo } 
-    });
+     const sinces = new Date(Date.now() - 24 * 60 * 60 * 1000)
     
+     const active = await Activity.distinct("userId", {
+    createdAt: { $gte: sinces }
+  })
+
     // Get suspended users count
     const suspend = await User.countDocuments({ status: 'suspend' });
     
     // Get pending users count
-    const pending = await User.countDocuments({ status: 'pending' });
+    const pending = await Withdrawal.countDocuments({ status: 'pending' });
     
     // Get total watched ads count (assuming you have an ads collection or field)
     // Replace with your actual ads tracking logic
-    const totalWatchedAdsResult = await User.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalWatchedAds: { $sum: '$watchedAdsCount' } // Adjust field name as needed
-        }
-      }
-    ]);
-    const totalWatchedAds = totalWatchedAdsResult[0]?.totalWatchedAds || 0;
+    const totalWatchedAds = await Activity.countDocuments({ activityType : 'ad_watch' })
     
-    // Get ads watched in last 24 hours
-    // This is a placeholder - implement based on your ads tracking system
-    const ads24hResult = await User.aggregate([
-      {
-        $match: {
-          lastAdWatchedAt: { $gte: oneDayAgo } // Adjust field name as needed
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          ads24h: { $sum: '$dailyAdsWatched' } // Adjust field name as needed
-        }
-      }
-    ]);
-    const ads24h = ads24hResult[0]?.ads24h || 0;
+ 
+    
+   const since = dayjs().subtract(24, 'hour').toDate();
+  
+   const ads24h = await Activity.countDocuments({
+    activityType: 'ad_watch',
+    status: 'completed',
+    createdAt: { $gte: since }
+  })
     
     // Admin Panel compatible response format
     const adminStats = {
@@ -58,7 +43,7 @@ router.get('/', async (req: Request, res: Response) => {
       totalWatchedAds,
       pending,
       suspend,
-      activeToday,
+      activeToday : active.length,
       ads24h
     };
     

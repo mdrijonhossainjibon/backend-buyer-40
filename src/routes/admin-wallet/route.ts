@@ -62,8 +62,9 @@ router.get('/deposit-address/:symbol', async (req: Request, res: Response) => {
     // Map networks with deposit address
     const networks = coin.networks.map((network) => {
       return {
-        network: network.network,
-        contractAddress: network.contractAddress || null,
+        id: network.id,
+        name: network.name,
+        contactAddress: network.contactAddress || null,
         minDeposit: network.minDeposit,
         minimumWithdraw: network.minimumWithdraw,
         withdrawFee: network.withdrawFee,
@@ -72,6 +73,8 @@ router.get('/deposit-address/:symbol', async (req: Request, res: Response) => {
         fee: network.fee,
         confirmations: network.confirmations,
         estimatedTime: network.estimatedTime || '~5 min',
+        rpcUrl: network.rpcUrl,
+        type: network.type,
         depositAddress: hotWallet.address,
       };
     });
@@ -136,8 +139,9 @@ router.get('/deposit-info/:symbol', async (req: Request, res: Response) => {
     // Map networks with deposit address
     const networks = coin.networks.map((network) => {
       return {
-        network: network.network,
-        contractAddress: network.contractAddress || null,
+        id: network.id,
+        name: network.name,
+        contactAddress: network.contactAddress || null,
         minDeposit: network.minDeposit,
         minimumWithdraw: network.minimumWithdraw,
         withdrawFee: network.withdrawFee,
@@ -146,6 +150,8 @@ router.get('/deposit-info/:symbol', async (req: Request, res: Response) => {
         fee: network.fee,
         confirmations: network.confirmations,
         estimatedTime: network.estimatedTime || '~5 min',
+        rpcUrl: network.rpcUrl,
+        type: network.type,
         depositAddress: hotWallet?.address || null,
       };
     });
@@ -700,38 +706,34 @@ router.get('/deposit-coins', async (req: Request, res: Response) => {
   try {
     
     // Get all active coins
-    const coins = await CryptoCoin.find({ status: 'active' });
+    const coins = await CryptoCoin.find({});
 
     
     // Get all active hot wallets
-    const hotWallet = await AdminWallet.findOne({ status: 'active' });
+    const hotWallet = await AdminWallet.findOne({});
+ 
+    const depositCoins = await Promise.all(coins.map(async (coin) => {
+      // Map networks with deposit address
+      const networks = await Promise.all(coin.networks.map(async (net) => {
+        const network = await Network.findOne({ id: net.network });
 
-    // Get all networks from Network model
-    const allNetworks = await Network.find({ status: 'active' });
-
-    const depositCoins = coins.map((coin) => {
-      // Map networks with deposit address and type from Network model
-      const networks = coin.networks.map((network) => {
-        // Find matching network from Network model to get type
-        const networkModel = allNetworks.find(n => n.id === network.network);
-        
         return {
-          id: network.network,
-          name: networkModel?.name || network.network,
-          type: networkModel?.type || 'Native',
-          contractAddress: network.contractAddress || null,
-          minDeposit: network.minDeposit,
-          minimumWithdraw: network.minimumWithdraw,
-          withdrawFee: network.withdrawFee,
-          requiresMemo: network.requiresMemo || false,
-          memoLabel: network.memoLabel || null,
-          fee: network.fee,
-          confirmations: network.confirmations,
-          estimatedTime: network.estimatedTime || '~5 min',
-          rpcUrl: networkModel?.rpcUrl || null,
+          id: net.network,
+          name: network?.name || net.name,
+          type: network?.type || 'Native',
+          contactAddress: net.contactAddress || null,
+          minDeposit: net.minDeposit,
+          minimumWithdraw: net.minimumWithdraw,
+          withdrawFee: net.withdrawFee,
+          requiresMemo: net.requiresMemo || false,
+          memoLabel: net.memoLabel || null,
+          fee: net.fee,
+          confirmations: net.confirmations,
+          estimatedTime: net.estimatedTime || '~5 min',
+          rpcUrl: network?.rpcUrl || '',
           address: hotWallet?.address || '',
         };
-      });
+      }));
 
       return {
         id: coin.id,
@@ -741,7 +743,7 @@ router.get('/deposit-coins', async (req: Request, res: Response) => {
         status: coin.status,
         networks,
       };
-    });
+    }));
 
     return res.json({
       success: true,
