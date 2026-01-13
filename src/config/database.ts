@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const connectDB = async (): Promise<void> => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://admin:secret@205.209.121.94:27017/AdCash_bot?authSource=admin';
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/AdCash_bot?authSource=admin';
     
     const conn = await mongoose.connect(mongoURI);
     
